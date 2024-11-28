@@ -7,8 +7,30 @@
     <link rel="icon" type="image/x-icon" href="{% static 'favicon/favicon.ico' %}">
 </head>
 <link rel="stylesheet" href="{% static 'css/style.css' %}">
-<script src="{% static 'js/flyonui.js' %}"></script>
 <body>
+    <header class="w-full px-container text-2xl flex justify-between">
+        <ul class="menu menu-vertical">
+            <li>
+                <a href="#">Ay Psikoloji</a>
+            </li>
+        </ul>
+        <ul class="menu menu-horizontal hidden md:flex">
+          <li>
+            <a href="#" aria-label="Home Link">Anasayfa</a>
+          </li>
+          <li>
+            <a href="#" aria-label="User Link">Randevu</a>
+          </li>
+          <li>
+            <a href="#" aria-label="Message Link">Hakkımda</span></a>
+          </li>
+        </ul>
+        <ul class="menu menu-vertical md:hidden">
+            <li>
+                <a href="#" class="dark:text-white"><i class="iconoir-menu"></i></a>
+            </li>
+        </ul>
+    </header>
     {% block content %}{% endblock %}
 </body>
 </html>
