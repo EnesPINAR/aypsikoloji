@@ -6,7 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ay Psikoloji</title>
     <link rel="icon" type="image/x-icon" href="{% static 'favicon/favicon.ico' %}">
-    <script src="https://cdn.jsdelivr.net/npm/flowbite@2.5.2/dist/flowbite.min.js"></script>
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
 <body>
@@ -15,7 +14,7 @@
     <a class="btn btn-ghost text-xl" href="/">Ay Psikoloji</a>
   </div>
   <div class="navbar-end">
-    <a class="btn btn-outline btn-info" href="/appointment">
+    <a class="btn btn-outline btn-primary" href="/appointment">
       Randevu Al
     </a>
     <div class="dropdown">
@@ -36,7 +35,7 @@
       <ul
         tabindex="0"
         class="menu dropdown-content bg-base-300 rounded-box z-[1] mt-3 w-52 p-2 shadow right-0">
-        <li><a>Hakkımda</a></li>
+        <li><a href="/about">Hakkımda</a></li>
       </ul>
     </div>
   </div>
