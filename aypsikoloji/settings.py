@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'pytailwindcss',
     'home',
     'compressor',
+    'appointment',
 ]
 
 MIDDLEWARE = [
