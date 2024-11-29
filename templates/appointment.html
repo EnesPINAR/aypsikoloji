@@ -2,12 +2,19 @@
 {% block content %}
 {% load static %}
 <main class="container prose h-[calc(100vh-64px)] px-4 pt-6">
-    <h2>Randevu Al</h2>
+    <h1>Randevu Al</h1>
     <form action="">
         <input type="text" placeholder="İsim" class="input input-bordered w-full mb-4" />
         <input type="text" placeholder="Soyisim" class="input input-bordered w-full mb-4" />
-        <input type="number" placeholder="Tel no." class="input input-bordered w-full" />
-
+        <input type="tel" placeholder="Tel no." class="input input-bordered w-full mb-4" />
+        <input type="date" class="input input-bordered w-full mb-4">
+        <input type="time" class="input input-bordered w-full mb-4">
+        <button type="submit" class="btn btn-primary w-full">
+            Randevu Al
+        </button>
     </form>
+    <p class="m-0">tarihli randevunuz kayıt edilmiştir.</p> <br>
+    <p class="m-0">Randevunuza onay verilmesi durumunda sizinle iletişime geçilecektir.</p><br>
+    <p class="m-0">Olası bir randevu iptali için iletişime geçebilirsiniz.</p>
 </main>
 {% endblock %}

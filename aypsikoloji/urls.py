@@ -20,9 +20,11 @@ from django.conf import settings
 
 from home.views import index
 from appointment.views import appointment
+from about.views import about
 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', index, name='home'),
     path('appointment/', appointment , name='appointment'),
+    path('about/', about, name='about'),
 ]
