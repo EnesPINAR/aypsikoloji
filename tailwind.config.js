@@ -11,6 +11,7 @@
      },
      plugins: [
         require("@tailwindcss/typography"),
-        require('daisyui')
+        require('daisyui'),
+        require('tailwindcss-motion'),
     ],
  };

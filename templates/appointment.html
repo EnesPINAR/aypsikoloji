@@ -2,19 +2,33 @@
 {% block content %}
 {% load static %}
 <main class="container prose h-[calc(100vh-64px)] px-4 pt-6">
-    <h1>Randevu Al</h1>
-    <form action="">
-        <input type="text" placeholder="İsim" class="input input-bordered w-full mb-4" />
-        <input type="text" placeholder="Soyisim" class="input input-bordered w-full mb-4" />
-        <input type="tel" placeholder="Tel no." class="input input-bordered w-full mb-4" />
-        <input type="date" class="input input-bordered w-full mb-4">
-        <input type="time" class="input input-bordered w-full mb-4">
-        <button type="submit" class="btn btn-primary w-full">
+    <h1 class="motion-preset-slide-right">Randevu Al</h1>
+    <form action="" method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
+        <input type="text" name="name" placeholder="İsim" class="input input-bordered w-full mb-4 motion-preset-shrink" />
+        <input type="text" name="surname" placeholder="Soyisim" class="input input-bordered w-full mb-4 motion-preset-shrink" />
+        <input type="tel" name="phone_number" placeholder="Tel no." class="input input-bordered w-full mb-4 motion-preset-shrink" />
+        <input type="datetime-local" name="date_time" class="input input-bordered w-full mb-4 motion-preset-shrink">
+        <button type="submit" class="btn btn-primary w-full motion-preset-shrink">
             Randevu Al
         </button>
     </form>
-    <p class="m-0">tarihli randevunuz kayıt edilmiştir.</p> <br>
-    <p class="m-0">Randevunuza onay verilmesi durumunda sizinle iletişime geçilecektir.</p><br>
-    <p class="m-0">Olası bir randevu iptali için iletişime geçebilirsiniz.</p>
+    {% if messages %}
+        {% for message in messages %}
+        <dialog id="modal_success" class="modal modal-bottom sm:modal-middle modal-open">
+          <div class="modal-box">
+            <h3 class="text-lg font-bold">Randevun Kaydedildi!</h3>
+            <p class="pb-4"><p class="text-success">{{ message }}</p> tarihli randevunuz kayıt edilmiştir.</p>
+            <p class="pb-4">Randevunuza onay verilmesi durumunda sizinle iletişime geçilecektir.</p>
+            <p class="pb-4">Olası bir randevu iptali için iletişime geçebilirsiniz.</p>
+            <div class="modal-action">
+              <form method="dialog">
+                <button class="btn" id="success_modal_close">Tamam</button>
+              </form>
+            </div>
+          </div>
+        </dialog>
+        {% endfor %}
+    {% endif %}
 </main>
 {% endblock %}

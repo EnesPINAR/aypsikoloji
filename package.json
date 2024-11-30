@@ -6,5 +6,8 @@
   },
   "scripts": {
     "watch:css": "tailwindcss build -i static/css/input.css -o static/css/style.css -w"
+  },
+  "dependencies": {
+    "tailwindcss-motion": "^0.4.3-beta"
   }
 }
