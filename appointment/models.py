@@ -13,3 +13,5 @@ class Appointment(models.Model):
     class Meta:
         verbose_name = "Randevu"
         verbose_name_plural = "Randevular"
+
+# TODO add available time logic
