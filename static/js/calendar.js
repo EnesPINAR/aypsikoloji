@@ -1,5 +1,4 @@
-document.addEventListener('DOMContentLoaded', function() {
-  // Elements
+document.addEventListener('DOMContentLoaded', function () {
   const calendarDays = document.getElementById('calendar-days');
   const currentMonthEl = document.getElementById('current-month');
   const prevMonthBtn = document.getElementById('prev-month');
@@ -9,155 +8,164 @@ document.addEventListener('DOMContentLoaded', function() {
   const confirmBtn = document.getElementById('confirm-datetime');
   const datetimeInput = document.querySelector('input[type="datetime-local"]');
 
-  // State
   let currentDate = new Date();
   let selectedDate = null;
   let selectedTime = null;
 
-  // Turkish month names
-  const monthNames = [
-    'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
-    'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'
-  ];
+  const monthNames = ['Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran', 'Temmuz', 'Ağustos', 'Eylül', 'Ekim', 'Kasım', 'Aralık'];
 
-  // Available dates from the server (you can populate this from your available_dates variable)
-  const availableDates = [];
-
-  // Initialize the calendar
-  function initCalendar() {
-    renderCalendar(currentDate);
-
-    // Event listeners
-    prevMonthBtn.addEventListener('click', function() {
-      currentDate.setMonth(currentDate.getMonth() - 1);
-      renderCalendar(currentDate);
-    });
-
-    nextMonthBtn.addEventListener('click', function() {
-      currentDate.setMonth(currentDate.getMonth() + 1);
-      renderCalendar(currentDate);
-    });
-
-    // Set up time slot selection
-    timeSlots.addEventListener('click', function(e) {
-      if (e.target.tagName === 'BUTTON') {
-        // Remove active class from all time slots
-        timeSlots.querySelectorAll('button').forEach(btn => {
-          btn.classList.remove('btn-active');
-        });
-
-        // Add active class to selected time slot
-        e.target.classList.add('btn-active');
-        selectedTime = e.target.textContent;
-        updateSelectedDatetime();
-      }
-    });
-
-    // Confirm button
-    confirmBtn.addEventListener('click', function() {
-      if (selectedDate && selectedTime) {
-        // Format the date for the datetime-local input
-        const [day, month, year] = selectedDate.split('/');
-        const [hours, minutes] = selectedTime.split(':');
-
-        const formattedDate = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}T${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}`;
-        datetimeInput.value = formattedDate;
-
-        // Close the calendar (if it's a modal or dropdown)
-        // toggleCalendar();
-      }
-    });
-  }
-
-  // Render the calendar for the given month
   function renderCalendar(date) {
     const year = date.getFullYear();
     const month = date.getMonth();
-
-    // Update the month display
     currentMonthEl.textContent = `${monthNames[month]} ${year}`;
-
-    // Clear the calendar
     calendarDays.innerHTML = '';
 
-    // Get the first day of the month
     const firstDay = new Date(year, month, 1);
-    // Get the last day of the month
     const lastDay = new Date(year, month + 1, 0);
-
-    // Get the day of the week of the first day (0 = Sunday, 1 = Monday, etc.)
     let firstDayOfWeek = firstDay.getDay();
-    if (firstDayOfWeek === 0) firstDayOfWeek = 7; // Convert Sunday from 0 to 7
+    if (firstDayOfWeek === 0) firstDayOfWeek = 7;
 
-    // Get the number of days in the previous month
     const prevMonthLastDay = new Date(year, month, 0).getDate();
 
-    // Add days from the previous month
     for (let i = firstDayOfWeek - 1; i > 0; i--) {
       const dayBtn = document.createElement('button');
-      dayBtn.classList.add('btn', 'btn-sm', 'btn-ghost', 'opacity-50');
+      dayBtn.className = 'btn btn-sm btn-ghost opacity-50';
       dayBtn.type = 'button';
       dayBtn.textContent = prevMonthLastDay - i + 1;
       calendarDays.appendChild(dayBtn);
     }
 
-    // Add days of the current month
     for (let i = 1; i <= lastDay.getDate(); i++) {
       const dayBtn = document.createElement('button');
-      dayBtn.classList.add('btn', 'btn-sm', 'btn-ghost');
+      dayBtn.className = 'btn btn-sm btn-ghost';
       dayBtn.type = 'button';
       dayBtn.textContent = i;
-
-      // Check if this day is available
-      const dateString = `${i.toString().padStart(2, '0')}/${(month + 1).toString().padStart(2, '0')}/${year}`;
-      if (isDateAvailable(dateString)) {
-        dayBtn.addEventListener('click', function() {
-          // Remove active class from all days
-          calendarDays.querySelectorAll('button').forEach(btn => {
-            btn.classList.remove('btn-active');
-          });
-
-          // Add active class to selected day
-          dayBtn.classList.add('btn-active');
-
-          // Update selected date
-          selectedDate = dateString;
-          updateSelectedDatetime();
-        });
-      } else {
-        dayBtn.classList.add('btn-disabled');
-      }
-
+      const formattedDate = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+      dayBtn.dataset.date = formattedDate;
       calendarDays.appendChild(dayBtn);
     }
 
-    // Add days from the next month if needed
     const totalDaysDisplayed = firstDayOfWeek - 1 + lastDay.getDate();
-    const remainingCells = 42 - totalDaysDisplayed; // 6 rows of 7 days
+    const remainingCells = 42 - totalDaysDisplayed;
 
     for (let i = 1; i <= remainingCells; i++) {
       const dayBtn = document.createElement('button');
-      dayBtn.classList.add('btn', 'btn-sm', 'btn-ghost', 'opacity-50');
+      dayBtn.className = 'btn btn-sm btn-ghost opacity-50';
       dayBtn.type = 'button';
       dayBtn.textContent = i;
       calendarDays.appendChild(dayBtn);
     }
   }
 
-  // Check if a date is available
-  function isDateAvailable(dateString) {
-    // You can implement your own logic here
-    // For now, all days are available
-    return true;
-  }
+  // Single event handler for calendar container
+  document.querySelector('.calendar-container').onclick = function(e) {
+    const dayButton = e.target.closest('button[data-date]');
+    if (!dayButton) return;
 
-  // Update the selected datetime display
-  function updateSelectedDatetime() {
-    if (selectedDate && selectedTime) {
-      selectedDatetimeEl.textContent = `${selectedDate} ${selectedTime}`;
+    // Update selected date
+    selectedDate = dayButton.dataset.date;
+
+    document.querySelectorAll('button[data-date]').forEach(btn => 
+      btn.classList.remove('btn-active')
+    );
+    dayButton.classList.add('btn-active');
+
+    fetch(`/api/available-hours/?date=${selectedDate}`)
+      .then(response => response.json())
+      .then(data => {
+        timeSlots.innerHTML = '';
+        if (!data.available) {
+          timeSlots.innerHTML = `
+            <p class="text-center text-warning col-span-4">
+              ${data.message || 'Bu tarih için müsait saat bulunmamaktadır.'}
+            </p>`;
+          return;
+        }
+        const grid = document.createElement('div');
+        grid.className = 'grid grid-cols-4 gap-2';
+        data.hours.forEach(hour => {
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'btn btn-sm btn-outline hover:bg-primary hover:text-primary-content';
+          btn.textContent = hour;
+          
+          btn.addEventListener('click', () => {
+            grid.querySelectorAll('button').forEach(timeBtn => {
+              timeBtn.classList.remove('btn-active', 'bg-primary', 'text-primary-content');
+            });
+            btn.classList.add('btn-active', 'bg-primary', 'text-primary-content');
+            
+            selectedTime = hour;
+            if (selectedDate && selectedTime) {
+              // Format datetime for Django
+              const formattedDatetime = `${selectedDate}T${selectedTime}:00`;
+              datetimeInput.value = formattedDatetime;
+            }
+          });
+          
+          grid.appendChild(btn);
+        });
+        timeSlots.appendChild(grid);
+      });
+  };
+
+  // Month navigation
+  prevMonthBtn.onclick = () => {
+    currentDate.setMonth(currentDate.getMonth() - 1);
+    renderCalendar(currentDate);
+  };
+
+  nextMonthBtn.onclick = () => {
+    currentDate.setMonth(currentDate.getMonth() + 1);
+    renderCalendar(currentDate);
+  };
+
+  // Initialize
+  renderCalendar(currentDate);
+
+  // Update form submission
+  document.querySelector('form').addEventListener('submit', function(e) {
+    if (!selectedDate || !selectedTime) {
+      e.preventDefault();
+      alert('Lütfen tarih ve saat seçiniz.');
+      return;
     }
-  }
 
-  // Initialize the calendar
-  initCalendar();
+    // Format datetime for Django
+    const formattedDatetime = `${selectedDate}T${selectedTime}:00`;
+    datetimeInput.value = formattedDatetime;
+  });
+
+  // Form validation before submit
+  document.querySelector('form').addEventListener('submit', function(e) {
+    if (!datetimeInput.value) {
+      e.preventDefault();
+      alert('Lütfen tarih ve saat seçiniz.');
+      return;
+    }
+  });
+
+  // Update time slot selection
+  function createTimeSlots(data, grid) {
+    data.hours.forEach(hour => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'btn btn-sm btn-outline hover:bg-primary hover:text-primary-content';
+      btn.textContent = hour;
+      
+      btn.addEventListener('click', () => {
+        grid.querySelectorAll('button').forEach(timeBtn => {
+          timeBtn.classList.remove('btn-active', 'bg-primary', 'text-primary-content');
+        });
+        btn.classList.add('btn-active', 'bg-primary', 'text-primary-content');
+        
+        selectedTime = hour;
+        if (selectedDate && selectedTime) {
+          datetimeInput.value = `${selectedDate}T${selectedTime}:00`;
+        }
+      });
+      
+      grid.appendChild(btn);
+    });
+  }
 });

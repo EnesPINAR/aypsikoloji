@@ -19,7 +19,7 @@ from django.urls import path
 from django.conf import settings
 
 from home.views import index
-from appointment.views import book_appointment
+from appointment.views import book_appointment, get_available_hours
 from about.views import about
 from contact.views import contact
 
@@ -29,4 +29,5 @@ urlpatterns = [
     path('appointment/', book_appointment , name='appointment'),
     path('about/', about, name='about'),
     path('contact/', contact, name='contact'),
+    path('api/available-hours/', get_available_hours, name='available-hours'),
 ]

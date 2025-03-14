@@ -5,11 +5,10 @@ import datetime
 
 
 class AvailableTimeSlot(models.Model):
-    """Model to store available time slots for appointments"""
     date = models.DateField(verbose_name="Tarih")
     start_time = models.TimeField(verbose_name="Başlangıç Saati")
     end_time = models.TimeField(verbose_name="Bitiş Saati")
-    duration = models.IntegerField(default=30, verbose_name="Süre (dakika)")
+    duration = models.IntegerField(default=50, verbose_name="Süre (dakika)")
     is_active = models.BooleanField(default=True, verbose_name="Aktif")
 
     def __str__(self):

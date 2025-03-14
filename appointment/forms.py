@@ -1,35 +1,43 @@
 from django import forms
 from django.utils import timezone
 from appointment.models import Appointment, AvailableTimeSlot
-
+from datetime import datetime
 
 class AppointmentForm(forms.ModelForm):
     class Meta:
         model = Appointment
         fields = ['name', 'surname', 'phone_number', 'date_time']
-        widgets = {
-            'date_time': forms.DateTimeInput(attrs={'type': 'datetime-local'}),
-        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        # Get available slots for date_time field
-        available_slots = []
+        # Add required attributes
+        self.fields['name'].required = True
+        self.fields['surname'].required = True
+        self.fields['phone_number'].required = True
+        self.fields['date_time'].required = True
+        
+        # Add a hidden input for datetime
+        self.fields['date_time'].widget = forms.HiddenInput()
 
-        available_time_slots = AvailableTimeSlot.objects.filter(
-            date__gte=timezone.now().date(),
-            is_active=True
-        )
+    def clean_date_time(self):
+        date_time = self.cleaned_data.get('date_time')
+        if not date_time:
+            raise forms.ValidationError("Lütfen tarih ve saat seçiniz.")
+        
+        # Convert string to datetime if needed
+        if isinstance(date_time, str):
+            try:
+                if 'T' in date_time:
+                    date_time = datetime.strptime(date_time, '%Y-%m-%dT%H:%M:%S')
+                else:
+                    date_time = datetime.strptime(date_time, '%Y-%m-%d %H:%M:%S')
+            except ValueError:
+                raise forms.ValidationError("Geçersiz tarih formatı.")
 
-        for slot in available_time_slots:
-            available_slots.extend(slot.get_available_slots())
+        return date_time
 
-        # Filter out slots that already have appointments
-        booked_slots = Appointment.objects.values_list('date_time', flat=True)
-        available_slots = [slot for slot in available_slots if slot not in booked_slots]
-
-        # Update the choices for the date_time field
-        if available_slots:
-            self.fields['date_time'].widget = forms.Select(
-                choices=[(slot.strftime('%Y-%m-%dT%H:%M'), slot.strftime('%d/%m/%Y %H:%M')) for slot in available_slots]
-            )
+    def clean_phone_number(self):
+        phone = self.cleaned_data.get('phone_number')
+        if not phone.isdigit() or len(phone) != 11:
+            raise forms.ValidationError("Geçerli bir telefon numarası giriniz. (11 haneli)")
+        return phone
