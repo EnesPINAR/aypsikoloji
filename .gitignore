@@ -1,0 +1,67 @@
+# Python
+*.py[cod]
+__pycache__/
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+eggs/
+parts/
+bin/
+var/
+sdist/
+develop-eggs/
+.installed.cfg
+lib/
+lib64/
+venv/
+.env/
+
+# Django
+*.log
+*.pot
+*.pyc
+db.sqlite3
+media/
+static/
+local_settings.py
+
+# VS Code
+.vscode/
+*.code-workspace
+.history/
+
+# Windows
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+System Volume Information/
+
+# Development/IDE
+*.swp
+*.swo
+*.swn
+.idea/
+*.sublime-workspace
+*.sublime-project
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+
+# Unit test / coverage reports
+nosetests.xml
+coverage.xml
+
+# Backup files
+*.bak
+*~
