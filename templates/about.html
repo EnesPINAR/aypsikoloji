@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block content %}
+{% load static %}
+<main class="container prose h-[calc(100vh-64px)] px-4 pt-6">
+    <h1 class="motion-preset-slide-right">Hakkımda</h1>
+    <div>
+        <img src="{% static 'img/pp.jpg' %}" class="h-32 w-32 rounded-full float-right mt-0 ml-4 mb-4 md:ml-8 md:mb-8 motion-preset-shrink">
+    <p class="text-justify motion-preset-focus">
+        Lorem ipsum dolor sit amet, consectetur adipisicing elit. Delectus, modi?
+    </p>
+    </div>
+</main>
+{% endblock %}

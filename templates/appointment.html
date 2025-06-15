@@ -1,0 +1,153 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block content %}
+<main class="container prose h-[calc(100vh-64px)] px-4 pt-6">
+    <h1 class="text-3xl font-bold mb-8">Randevu Al</h1>
+    
+    <div class="bg-white dark:bg-base-100 rounded-lg shadow p-6 mb-8">
+        <!-- Calendar Navigation -->
+        <div class="flex items-center justify-between mb-6">
+            <button id="prev-month" class="btn btn-ghost">&lt;</button>
+            <h2 id="current-month" class="text-xl font-semibold"></h2>
+            <button id="next-month" class="btn btn-ghost">&gt;</button>
+        </div>
+        
+        <form method="POST" class="space-y-6">
+            {% csrf_token %}
+            <!-- Calendar -->
+            <div class="calendar-container pb-4 pt-4">
+                <div id="calendar-days" class="grid gap-2">
+                    <!-- Calendar will be generated here -->
+                </div>
+            </div>
+            
+            <div id="time-slots" class="mt-6">
+                <!-- Time slots will be generated here -->
+            </div>
+            
+            <div class="space-y-4 mt-6">
+                <div class="form-group">
+                    <label for="name" class="label font-medium text-gray-700 dark:text-gray-200">Ad</label>
+                    <input type="text" 
+                           class="input input-bordered w-full bg-white dark:bg-gray-700 focus:ring-2 focus:ring-primary" 
+                           id="name" 
+                           name="name" 
+                           required>
+                </div>
+
+                <div class="form-group">
+                    <label for="surname" class="label font-medium text-gray-700 dark:text-gray-200">Soyad</label>
+                    <input type="text" 
+                           class="input input-bordered w-full bg-white dark:bg-gray-700 focus:ring-2 focus:ring-primary" 
+                           id="surname" 
+                           name="surname" 
+                           required>
+                </div>
+                
+                <div>
+                    <label class="label font-medium text-gray-700 dark:text-gray-200" for="phone">Telefon</label>
+                    <input type="tel" 
+                           name="phone_number" 
+                           id="phone" 
+                           required 
+                           class="input input-bordered w-full bg-white dark:bg-gray-700 focus:ring-2 focus:ring-primary" 
+                           placeholder="05XX XXX XX XX" />
+                </div>
+            </div>
+            
+            <button type="submit" 
+                    class="btn btn-primary w-full mt-6 hover:bg-primary-600 transition-colors duration-200">
+                Randevu Oluştur
+            </button>
+        </form>
+    </div>
+</main>
+
+<!-- Success Modal -->
+<div id="modal_success" class="modal">
+    <div class="modal-box">
+        <h3 class="font-bold text-lg">Başarılı!</h3>
+        <p class="py-4 modal-message"></p>
+        <div class="modal-action">
+            <button id="success_modal_close" class="btn">Tamam</button>
+        </div>
+    </div>
+</div>
+
+<!-- Error Modal -->
+<div id="modal_error" class="modal">
+    <div class="modal-box">
+        <h3 class="font-bold text-lg text-error">Hata!</h3>
+        <p class="py-4 modal-message"></p>
+        <p class="text-sm text-gray-500 dark:text-gray-400 modal-details"></p>
+        <div class="modal-action">
+            <button id="error_modal_close" class="btn">Tamam</button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'js/modal.js' %}" defer></script>
+<script src="{% static 'js/calendar.js' %}" defer></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const appointmentForm = document.querySelector('form');
+    if (!appointmentForm) return;
+
+    appointmentForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        // 1. Validate date and time selection first
+        if (!window.selectedDate || !window.selectedTime) {
+            window.showErrorModal('Lütfen tarih ve saat seçiniz.');
+            return;
+        }
+        
+        // 2. Prepare form data
+        const formData = new FormData();
+        formData.append('name', document.getElementById('name').value);
+        formData.append('surname', document.getElementById('surname').value);
+        formData.append('phone_number', document.getElementById('phone').value);
+        formData.append('date', window.selectedDate);
+        formData.append('time', window.selectedTime);
+        
+        try {
+            // 3. Submit form
+            const response = await fetch('', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                }
+            });
+            
+            const data = await response.json();
+            
+            // 4. Handle response
+            if (response.ok) {
+                // Success case
+                window.showSuccessModal(data.message);
+                // Reset form and selections after showing success message
+                appointmentForm.reset();
+                window.selectedDate = null;
+                window.selectedTime = null;
+            } else {
+                // Error cases
+                if (data.type === 'phone_error') {
+                    window.showErrorModal(data.message, data.detail);
+                } else if (data.type === 'time_conflict') {
+                    window.showErrorModal(data.message);
+                    await loadAvailableTimes(window.selectedDate);
+                } else {
+                    window.showErrorModal(data.message);
+                }
+            }
+        } catch (error) {
+            window.showErrorModal('Bir hata oluştu. Lütfen tekrar deneyiniz.');
+        }
+    });
+});
+</script>
+{% endblock %}

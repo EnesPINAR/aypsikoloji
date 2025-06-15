@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block content %}
+{% load static %}
+<main class="container prose flex flex-col justify-between h-[calc(100vh-64px)] px-4 pt-6">
+    <div>
+        <h1 class="motion-preset-slide-right">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Etiam purus.</h1>
+        <div class="w-full flex justify-center">
+            <a class="btn btn-lg btn-primary w-full sm:w-auto motion-preset-shrink" href="/appointment">
+                Randevu Al
+            </a>
+        </div>
+    </div>
+    <img src="{% static 'img/banner.svg' %}" class="motion-preset-expand ">
+</main>
+{% endblock %}

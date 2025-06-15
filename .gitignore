@@ -65,3 +65,6 @@ coverage.xml
 # Backup files
 *.bak
 *~
+
+# npm
+node_modules
