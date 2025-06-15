@@ -76,19 +76,18 @@ class Appointment(models.Model):
         return (start_datetime + timedelta(minutes=50)).time()
 
     def clean(self):
-        # Validate time conflict
-        conflicts = Appointment.objects.filter(
-            date=self.date,
-            start_time=self.start_time
-        ).exclude(id=self.id)
-        
-        if conflicts.exists():
-            raise ValidationError({
-                '__all__': _('Bu zaman aralığında başka bir randevu bulunmaktadır.')
-            })
+        if not self.pk:  # Only check for new appointments
+            conflicts = Appointment.objects.filter(
+                date=self.date,
+                start_time=self.start_time
+            )
+            
+            if conflicts.exists():
+                raise ValidationError({
+                    '__all__': _('Bu zaman aralığında başka bir randevu bulunmaktadır.')
+                })
 
     def save(self, *args, **kwargs):
-        self.client_phone = re.sub(r'\D', '', self.client_phone)
         super().save(*args, **kwargs)
 
     class Meta:

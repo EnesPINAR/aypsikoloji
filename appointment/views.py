@@ -30,21 +30,21 @@ def get_calendar_days(year, month):
 def appointment_view(request):
     if request.method == 'POST':
         try:
-            # Get and clean form data
+            # Get form data
             name = request.POST.get('name', '').strip()
             phone = request.POST.get('phone_number', '').strip()
             date_str = request.POST.get('date', '').strip()
             time_str = request.POST.get('time', '').strip()
             
-            # Validate required fields
+            # Basic validation
             if not all([name, phone, date_str, time_str]):
                 return JsonResponse({
                     'status': 'error',
                     'message': 'Lütfen tüm alanları doldurunuz.'
                 }, status=400)
 
+            # Parse date and time
             try:
-                # Parse date and time
                 appointment_date = datetime.strptime(date_str, '%Y-%m-%d').date()
                 appointment_time = datetime.strptime(time_str, '%H:%M').time()
             except ValueError:
@@ -61,25 +61,23 @@ def appointment_view(request):
                 start_time=appointment_time
             )
 
-            # Validate all fields and check conflicts
+            # Validate before saving
             try:
                 appointment.full_clean()
             except ValidationError as e:
-                error_message = ''
                 if 'client_phone' in e.message_dict:
                     error_message = e.message_dict['client_phone'][0]
                 elif '__all__' in e.message_dict:
                     error_message = e.message_dict['__all__'][0]
                 else:
                     error_message = 'Validasyon hatası oluştu.'
-
                 return JsonResponse({
                     'status': 'error',
                     'message': error_message
                 }, status=400)
 
-            # Save if all validations pass
-            appointment.save()
+            # Save if validation passes
+            appointment.save()  # No validation in save() method now
             return JsonResponse({
                 'status': 'success',
                 'message': 'Randevunuz başarıyla oluşturuldu.'
