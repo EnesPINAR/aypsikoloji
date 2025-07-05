@@ -13,6 +13,11 @@ class Psychologist(models.Model):
 
     def __str__(self):
         return self.user.get_full_name() or self.user.username
+    
+    class Meta:
+        verbose_name = "Psikolog"
+        verbose_name_plural = "Psikologlar"
+
 
 class WorkingSlot(models.Model):
     """ Psikoloğun belirli bir gün için çalışma saatlerini tanımlar. """
@@ -24,6 +29,8 @@ class WorkingSlot(models.Model):
     class Meta:
         # Bir psikolog bir günde sadece bir çalışma aralığı tanımlayabilir.
         unique_together = ('psychologist', 'date')
+        verbose_name = "Çalışma Saati"
+        verbose_name_plural = "Çalışma Saatleri"
 
     def __str__(self):
         return f"{self.psychologist} - {self.date} ({self.start_time}-{self.end_time})"
@@ -51,6 +58,10 @@ class Appointment(models.Model):
 
     def __str__(self):
         return f"Randevu: {self.user_name} {self.user_surname} - {self.date} {self.time}"
+    
+    class Meta:
+        verbose_name = "Randevu"
+        verbose_name_plural = "Randevular"
 
 class CancelledAppointmentLog(models.Model):
     """ Psikolog tarafından iptal edilen randevuların kaydını tutar. """
