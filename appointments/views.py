@@ -10,6 +10,8 @@ from rest_framework.decorators import action
 from .models import Psychologist, WorkingSlot, Appointment, CancelledAppointmentLog
 from .serializers import WorkingSlotSerializer, AppointmentSerializer, PsychologistAppointmentSerializer
 from datetime import datetime, timedelta
+from django.utils import timezone
+from django.utils.timezone import localtime
 
 # --- Psikolog (Admin Panel) için View'lar ---
 
@@ -52,11 +54,11 @@ class PsychologistAppointmentViewSet(viewsets.ReadOnlyModelViewSet):
     def cancel(self, request, pk=None):
         """ Bir randevuyu iptal eder. """
         appointment = self.get_object()
-        
+
         # Sadece 'BOOKED' durumundaki randevular iptal edilebilir.
         if appointment.status != 'BOOKED':
             return Response({'error': 'Bu randevu zaten iptal edilmiş veya tamamlanmış.'}, status=status.HTTP_400_BAD_REQUEST)
-            
+
         appointment.status = 'CANCELLED'
         appointment.save()
 
@@ -83,8 +85,8 @@ class AvailableSlotsView(generics.ListAPIView):
     Belirli bir tarih için müsait randevu saatlerini listeler.
     Kullanım: /api/public/available-slots/?date=YYYY-MM-DD&psychologist_id=1
     """
-    permission_classes = [AllowAny] # Herkes erişebilir
-    serializer_class = None # Özel bir response döndüreceğiz
+    permission_classes = [AllowAny]
+    serializer_class = None
 
     def get(self, request, *args, **kwargs):
         date_str = request.query_params.get('date')
@@ -99,28 +101,33 @@ class AvailableSlotsView(generics.ListAPIView):
         except (ValueError, Psychologist.DoesNotExist):
             return Response({'error': 'Geçersiz tarih formatı veya bulunamayan psikolog.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 1. O gün için çalışma saatini bul
         try:
             working_slot = WorkingSlot.objects.get(psychologist=psychologist, date=date)
         except WorkingSlot.DoesNotExist:
-            return Response([], status=status.HTTP_200_OK) # O gün çalışma yoksa boş liste döndür
+            return Response([], status=status.HTTP_200_OK)
 
-        # 2. O gün için alınmış randevuları bul
         booked_appointments = Appointment.objects.filter(
             psychologist=psychologist,
             date=date,
             status='BOOKED'
         ).values_list('time', flat=True)
 
-        # 3. Müsait zaman dilimlerini hesapla (1 saatlik seanslar varsayımıyla)
         available_slots = []
-        current_time = datetime.combine(date, working_slot.start_time)
-        end_time = datetime.combine(date, working_slot.end_time)
+        current_time_dt = datetime.combine(date, working_slot.start_time)
+        end_time_dt = datetime.combine(date, working_slot.end_time)
 
-        while current_time < end_time:
-            if current_time.time() not in booked_appointments:
-                available_slots.append(current_time.strftime('%H:%M'))
-            current_time += timedelta(hours=1) # Seans aralığı
+        while current_time_dt < end_time_dt:
+            if current_time_dt.time() not in booked_appointments:
+                available_slots.append(current_time_dt.strftime('%H:%M'))
+            current_time_dt += timedelta(hours=1)
+
+        now = localtime(timezone.now())
+
+        if date == now.date():
+            current_time_str = now.strftime('%H:%M')
+            # Sadece şu anki zamandan daha ileri olan slotları tut
+            available_slots = [slot for slot in available_slots if slot > current_time_str]
+        # --- KONTROL SONU ---
 
         return Response(available_slots, status=status.HTTP_200_OK)
 
@@ -138,7 +145,7 @@ class AppointmentCreateView(generics.CreateAPIView):
         # Bu kısımda randevu alınmak istenen saatin gerçekten müsait olup
         # olmadığını tekrar kontrol etmek kritik öneme sahiptir (Double booking önlemek için).
         # Basitlik adına bu kontrol şimdilik atlanmıştır, ancak production'da eklenmelidir.
-        
+
         # Şimdilik, tek psikolog olduğunu varsayarak atama yapıyoruz.
         # Gelecekte, request body'den psychologist_id alınmalıdır.
         psychologist = Psychologist.objects.first() # Varsayılan olarak ilk psikolog
