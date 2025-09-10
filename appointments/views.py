@@ -3,7 +3,7 @@ from django.shortcuts import render
 # Create your views here.
 # appointments/views.py
 
-from rest_framework import viewsets, generics, status
+from rest_framework import viewsets, generics, status, serializers
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.decorators import action
@@ -144,14 +144,27 @@ class AppointmentCreateView(generics.CreateAPIView):
     permission_classes = [AllowAny]
 
     def perform_create(self, serializer):
-        # Bu kısımda randevu alınmak istenen saatin gerçekten müsait olup
-        # olmadığını tekrar kontrol etmek kritik öneme sahiptir (Double booking önlemek için).
-        # Basitlik adına bu kontrol şimdilik atlanmıştır, ancak production'da eklenmelidir.
+            date = serializer.validated_data.get('date')
+            time = serializer.validated_data.get('time')
 
-        # Şimdilik, tek psikolog olduğunu varsayarak atama yapıyoruz.
-        # Gelecekte, request body'den psychologist_id alınmalıdır.
-        psychologist = Psychologist.objects.first() # Varsayılan olarak ilk psikolog
-        date = serializer.validated_data.get('date')
-        working_slot = WorkingSlot.objects.get(psychologist=psychologist, date=date)
+            # Gelecekte request body'den psychologist_id alınabilir
+            psychologist = Psychologist.objects.first()
 
-        serializer.save(psychologist=psychologist, working_slot=working_slot)
+            # Double-booking (çift rezervasyon) kontrolü
+            # Veritabanına kaydetmeden önce bu saatte zaten bir randevu var mı diye son kez kontrol et.
+            if Appointment.objects.filter(psychologist=psychologist, date=date, time=time, status='BOOKED').exists():
+                # Eğer varsa, bir doğrulama hatası fırlat. Bu, kullanıcıya 400 Bad Request olarak dönecektir.
+                raise serializers.ValidationError(
+                    'Bu zaman dilimi başka bir danışan tarafından rezerve edilmiştir. Lütfen farklı bir saat seçiniz.'
+                )
+
+            # Randevu oluşturma işlemi
+            try:
+                # İlgili çalışma gününü bul
+                working_slot = WorkingSlot.objects.get(psychologist=psychologist, date=date)
+                # Her şey yolundaysa, randevuyu kaydet
+                serializer.save(psychologist=psychologist, working_slot=working_slot)
+            except WorkingSlot.DoesNotExist:
+                raise serializers.ValidationError(
+                    'Seçilen tarihte psikoloğun bir çalışma planı bulunmamaktadır.'
+                )
