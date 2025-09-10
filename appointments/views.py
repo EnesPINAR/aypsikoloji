@@ -12,6 +12,8 @@ from .serializers import WorkingSlotSerializer, AppointmentSerializer, Psycholog
 from datetime import datetime, timedelta
 from django.utils import timezone
 from django.utils.timezone import localtime
+from django.utils.decorators import method_decorator
+from django.views.decorators.csrf import ensure_csrf_cookie
 
 # --- Psikolog (Admin Panel) için View'lar ---
 
@@ -131,7 +133,7 @@ class AvailableSlotsView(generics.ListAPIView):
 
         return Response(available_slots, status=status.HTTP_200_OK)
 
-
+@method_decorator(ensure_csrf_cookie, name='dispatch')
 class AppointmentCreateView(generics.CreateAPIView):
     """
     Kullanıcının yeni bir randevu oluşturmasını sağlar.
