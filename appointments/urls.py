@@ -1,13 +1,18 @@
 # appointments/urls.py
 
+from django.contrib import admin
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
-    WorkingSlotViewSet, 
-    PsychologistAppointmentViewSet, 
+    WorkingSlotViewSet,
+    PsychologistAppointmentViewSet,
     AvailableSlotsView,
     AppointmentCreateView
 )
+
+admin.site.site_title = "Randevu Yönetim Paneli"
+admin.site.site_header = "Aypsikoloji Yönetim Paneli"
+admin.site.index_title = "Randevu ve Müsaitlik Yönetimi"
 
 # ViewSet'ler için router
 router = DefaultRouter()
