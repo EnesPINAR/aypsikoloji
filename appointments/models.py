@@ -13,7 +13,7 @@ class Psychologist(models.Model):
 
     def __str__(self):
         return self.user.get_full_name() or self.user.username
-    
+
     class Meta:
         verbose_name = "Psikolog"
         verbose_name_plural = "Psikologlar"
@@ -37,6 +37,7 @@ class WorkingSlot(models.Model):
 
 class Appointment(models.Model):
     """ Müşterilerin aldığı randevuları temsil eder. """
+
     STATUS_CHOICES = [
         ('BOOKED', 'Dolu'),
         ('CANCELLED', 'İptal Edildi'),
@@ -45,20 +46,20 @@ class Appointment(models.Model):
     psychologist = models.ForeignKey(Psychologist, on_delete=models.CASCADE, related_name='appointments')
     # WorkingSlot'a ForeignKey eklemek, hangi slotun dolduğunu bilmek için önemlidir.
     working_slot = models.ForeignKey(WorkingSlot, on_delete=models.CASCADE, related_name='appointments')
-    
+
     user_name = models.CharField(max_length=100)
     user_surname = models.CharField(max_length=100)
     phone = models.CharField(max_length=15)
-    
+
     date = models.DateField()
     time = models.TimeField() # Randevunun tam başlangıç saati
-    
+
     status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='BOOKED')
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"Randevu: {self.user_name} {self.user_surname} - {self.date} {self.time}"
-    
+
     class Meta:
         verbose_name = "Randevu"
         verbose_name_plural = "Randevular"
