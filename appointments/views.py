@@ -1,8 +1,6 @@
-from django.shortcuts import render
-
-# Create your views here.
 # appointments/views.py
 
+from django.shortcuts import render
 from rest_framework import viewsets, generics, status, serializers
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -13,7 +11,12 @@ from datetime import datetime, timedelta
 from django.utils import timezone
 from django.utils.timezone import localtime
 from django.utils.decorators import method_decorator
-from django.views.decorators.csrf import ensure_csrf_cookie
+
+# --- YENİ EKLENEN IMPORTLAR ---
+from django.core.mail import send_mail
+from django.conf import settings
+# --- YENİ IMPORTLAR SONU ---
+
 
 # --- Psikolog (Admin Panel) için View'lar ---
 
@@ -26,7 +29,7 @@ class WorkingSlotViewSet(viewsets.ModelViewSet):
     - delete: /api/psychologist/working-slots/{id}/
     """
     serializer_class = WorkingSlotSerializer
-    permission_classes = [IsAuthenticated] # Sadece giriş yapmış kullanıcılar
+    permission_classes = [IsAuthenticated] 
 
     def get_queryset(self):
         # Sadece isteği yapan psikoloğun kendi slotlarını döndürür.
@@ -132,8 +135,6 @@ class AvailableSlotsView(generics.ListAPIView):
         # --- KONTROL SONU ---
 
         return Response(available_slots, status=status.HTTP_200_OK)
-
-@method_decorator(ensure_csrf_cookie, name='dispatch')
 class AppointmentCreateView(generics.CreateAPIView):
     """
     Kullanıcının yeni bir randevu oluşturmasını sağlar.
@@ -162,9 +163,61 @@ class AppointmentCreateView(generics.CreateAPIView):
             try:
                 # İlgili çalışma gününü bul
                 working_slot = WorkingSlot.objects.get(psychologist=psychologist, date=date)
-                # Her şey yolundaysa, randevuyu kaydet
-                serializer.save(psychologist=psychologist, working_slot=working_slot)
+                
+                # --- GÜNCELLENDİ ---
+                # Her şey yolundaysa, randevuyu kaydet VE yeni oluşturulan objeyi yakala
+                appointment = serializer.save(psychologist=psychologist, working_slot=working_slot)
+                
+                # --- YENİ EKLENDİ ---
+                # E-posta gönderme fonksiyonunu çağır
+                self.send_admin_notification(appointment)
+                # --- YENİ EKLEME SONU ---
+
             except WorkingSlot.DoesNotExist:
                 raise serializers.ValidationError(
                     'Seçilen tarihte psikoloğun bir çalışma planı bulunmamaktadır.'
                 )
+
+    # --- YENİ EKLENEN YARDIMCI METOT ---
+    def send_admin_notification(self, appointment):
+        """Yeni randevu oluşturulduğunda admin'e bildirim maili gönderir."""
+        try:
+            subject = f"Yeni Randevu Bildirimi: {appointment.user_name} {appointment.user_surname}"
+            
+            # E-posta içeriğini oluştur
+            message = f"""
+            Merhaba,
+
+            Sistem üzerinden yeni bir randevu oluşturuldu.
+
+            Danışan Bilgileri:
+            İsim: {appointment.user_name}
+            Soyisim: {appointment.user_surname}
+            Telefon: {appointment.phone}
+
+            Randevu Detayları:
+            Psikolog: {appointment.psychologist.user.get_full_name()}
+            Tarih: {appointment.date.strftime('%d.%m.%Y')}
+            Saat: {appointment.time.strftime('%H:%M')}
+
+            Randevuyu panel üzerinden yönetebilirsiniz.
+            """
+
+            # settings.py'den tanımladığımız değişkenleri kullan
+            from_email = settings.EMAIL_HOST_USER
+            recipient_list = [settings.ADMIN_EMAIL_ADDRESS]
+
+            send_mail(
+                subject,
+                message,
+                from_email,
+                recipient_list,
+                fail_silently=False  # Hata olursa görünür yap (Geliştirme için True yapabilirsiniz)
+            )
+        
+        except Exception as e:
+            # E-posta gönderimi başarısız olursa API'nin çökmesini engelle.
+            # Üretim ortamında burası 'logging' kütüphanesi ile kayıt altına alınmalı.
+            print(f"Hata: Admin e-postası gönderilemedi - {e}")
+            pass  # E-posta hatası randevu alımını engellemesin
+    # --- YENİ METOT SONU ---
