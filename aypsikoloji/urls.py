@@ -23,5 +23,5 @@ urlpatterns = [
     path('api-auth/', include('rest_framework.urls')),
     path('api/', include('appointments.urls')),
     # API ve admin dışındaki tüm URL'leri React'e yönlendir
-    re_path(r'^(?!api/|admin/).*$', TemplateView.as_view(template_name='index.html')),
+    re_path(r'^(?!api-auth/?|api/?|admin/?).*$', TemplateView.as_view(template_name='index.html')),
 ]
