@@ -139,5 +139,9 @@ GitHub.sublime-settings
 # Static files #
 staticfiles/
 
+# Node
+node_modules/
+
 # Migrations #
 */migrations/*.py
+

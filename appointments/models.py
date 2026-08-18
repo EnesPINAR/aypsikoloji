@@ -1,76 +1,161 @@
 from django.db import models
+from django.contrib.auth.models import User
+from django.utils import timezone
 
-# Create your models here.
-# appointments/models.py
-
-from django.db import models
-from django.contrib.auth.models import User # Psikolog girişi için temel User modeli
-
-# Gelecekte psikologlara özel daha fazla alan eklemek için bu model kullanılabilir.
 class Psychologist(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    # Gelecekte buraya uzmanlık alanı, fotoğraf gibi alanlar eklenebilir.
+    """ Psikolog profil modeli """
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='psychologist_profile')
+    title = models.CharField(max_length=100, default="Uzman Klinik Psikolog")
+    bio = models.TextField(blank=True, default="")
+    phone = models.CharField(max_length=20, blank=True, default="")
+    slot_duration_minutes = models.PositiveIntegerField(default=50, help_text="Seans süresi (dakika)")
+    break_duration_minutes = models.PositiveIntegerField(default=10, help_text="Mola süresi (dakika)")
 
     def __str__(self):
-        return self.user.get_full_name() or self.user.username
+        full_name = self.user.get_full_name()
+        return full_name if full_name else self.user.username
 
     class Meta:
         verbose_name = "Psikolog"
         verbose_name_plural = "Psikologlar"
 
 
-class WorkingSlot(models.Model):
-    """ Psikoloğun belirli bir gün için çalışma saatlerini tanımlar. """
-    psychologist = models.ForeignKey(Psychologist, on_delete=models.CASCADE, related_name='working_slots')
-    date = models.DateField()
-    start_time = models.TimeField()
-    end_time = models.TimeField()
+class ClientProfile(models.Model):
+    """ Danışan profil ve onay takip modeli """
+    STATUS_CHOICES = [
+        ('PENDING', 'Onay Bekliyor'),
+        ('APPROVED', 'Onaylandı'),
+        ('REJECTED', 'Reddedildi'),
+    ]
 
-    class Meta:
-        # Bir psikolog bir günde sadece bir çalışma aralığı tanımlayabilir.
-        unique_together = ('psychologist', 'date')
-        verbose_name = "Çalışma Saati"
-        verbose_name_plural = "Çalışma Saatleri"
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='client_profile')
+    phone = models.CharField(max_length=20, db_index=True)
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='PENDING', db_index=True)
+    created_by_psychologist = models.BooleanField(default=False, help_text="Psikolog tarafından manuel mi oluşturuldu")
+    notes = models.TextField(blank=True, default="", help_text="Psikoloğun danışan ile ilgili özel notları")
+    created_at = models.DateTimeField(auto_now_add=True)
+    approved_at = models.DateTimeField(null=True, blank=True)
+
+    @property
+    def is_approved(self):
+        return self.status == 'APPROVED'
+
+    def approve(self):
+        self.status = 'APPROVED'
+        self.approved_at = timezone.now()
+        self.save(update_fields=['status', 'approved_at'])
+
+    def reject(self):
+        self.status = 'REJECTED'
+        self.save(update_fields=['status'])
 
     def __str__(self):
-        return f"{self.psychologist} - {self.date} ({self.start_time}-{self.end_time})"
+        full_name = self.user.get_full_name() or self.user.username
+        return f"{full_name} ({self.get_status_display()}) - {self.phone}"
+
+    class Meta:
+        verbose_name = "Danışan Profili"
+        verbose_name_plural = "Danışan Profilleri"
+
+
+class WeeklySchedule(models.Model):
+    """ Psikoloğun haftanın 7 günü için varsayılan çalışma saatleri şablonu """
+    DAYS_OF_WEEK = [
+        (0, 'Pazartesi'),
+        (1, 'Salı'),
+        (2, 'Çarşamba'),
+        (3, 'Perşembe'),
+        (4, 'Cuma'),
+        (5, 'Cumartesi'),
+        (6, 'Pazar'),
+    ]
+
+    psychologist = models.ForeignKey(Psychologist, on_delete=models.CASCADE, related_name='weekly_schedules')
+    day_of_week = models.IntegerField(choices=DAYS_OF_WEEK)
+    start_time = models.TimeField(default="09:00")
+    end_time = models.TimeField(default="18:00")
+    is_active = models.BooleanField(default=True, help_text="Bu gün seans kabul ediliyor mu?")
+
+    class Meta:
+        unique_together = ('psychologist', 'day_of_week')
+        ordering = ['day_of_week']
+        verbose_name = "Haftalık Çalışma Şablonu"
+        verbose_name_plural = "Haftalık Çalışma Şablonları"
+
+    def __str__(self):
+        day_name = dict(self.DAYS_OF_WEEK).get(self.day_of_week, str(self.day_of_week))
+        durum = f"{self.start_time.strftime('%H:%M')} - {self.end_time.strftime('%H:%M')}" if self.is_active else "Kapalı"
+        return f"{self.psychologist} - {day_name}: {durum}"
+
+
+class DateOverride(models.Model):
+    """ Belirli bir tarihe özel istisnalar (izinli / tatil veya özel saatler) """
+    OVERRIDE_TYPE_CHOICES = [
+        ('OFF', 'İzinli / Kapalı'),
+        ('CUSTOM', 'Özel Çalışma Saatleri'),
+    ]
+
+    psychologist = models.ForeignKey(Psychologist, on_delete=models.CASCADE, related_name='date_overrides')
+    date = models.DateField(db_index=True)
+    override_type = models.CharField(max_length=10, choices=OVERRIDE_TYPE_CHOICES, default='OFF')
+    start_time = models.TimeField(null=True, blank=True)
+    end_time = models.TimeField(null=True, blank=True)
+    reason = models.CharField(max_length=255, blank=True, default="")
+
+    class Meta:
+        unique_together = ('psychologist', 'date')
+        verbose_name = "Özel Gün / İstisna"
+        verbose_name_plural = "Özel Günler / İstisnalar"
+
+    def __str__(self):
+        return f"{self.psychologist} - {self.date} ({self.get_override_type_display()})"
+
 
 class Appointment(models.Model):
-    """ Müşterilerin aldığı randevuları temsil eder. """
-
+    """ Danışan randevuları """
     STATUS_CHOICES = [
-        ('BOOKED', 'Dolu'),
+        ('BOOKED', 'Rezerve Edildi'),
+        ('COMPLETED', 'Tamamlandı'),
         ('CANCELLED', 'İptal Edildi'),
     ]
 
     psychologist = models.ForeignKey(Psychologist, on_delete=models.CASCADE, related_name='appointments')
-    # WorkingSlot'a ForeignKey eklemek, hangi slotun dolduğunu bilmek için önemlidir.
-    working_slot = models.ForeignKey(WorkingSlot, on_delete=models.CASCADE, related_name='appointments')
+    client = models.ForeignKey(ClientProfile, on_delete=models.SET_NULL, null=True, blank=True, related_name='appointments')
 
+    # Danışan bilgileri
     user_name = models.CharField(max_length=100)
     user_surname = models.CharField(max_length=100)
-    phone = models.CharField(max_length=15)
+    phone = models.CharField(max_length=20)
 
-    date = models.DateField()
-    time = models.TimeField() # Randevunun tam başlangıç saati
+    date = models.DateField(db_index=True)
+    time = models.TimeField()
+    end_time = models.TimeField(null=True, blank=True)
 
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='BOOKED')
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='BOOKED', db_index=True)
+    client_notes = models.TextField(blank=True, default="")
+    psychologist_notes = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"Randevu: {self.user_name} {self.user_surname} - {self.date} {self.time}"
+        return f"{self.date} {self.time} - {self.user_name} {self.user_surname} ({self.get_status_display()})"
 
     class Meta:
+        ordering = ['-date', '-time']
         verbose_name = "Randevu"
         verbose_name_plural = "Randevular"
 
+
 class CancelledAppointmentLog(models.Model):
-    """ Psikolog tarafından iptal edilen randevuların kaydını tutar. """
-    appointment = models.OneToOneField(Appointment, on_delete=models.CASCADE)
+    """ İptal edilen randevu kayıtları """
+    appointment = models.OneToOneField(Appointment, on_delete=models.CASCADE, related_name='cancellation_log')
+    cancelled_by = models.CharField(max_length=20, default="PSYCHOLOGIST") # PSYCHOLOGIST, CLIENT, SYSTEM
     cancelled_at = models.DateTimeField(auto_now_add=True)
-    reason = models.TextField(blank=True, null=True) # İptal nedeni (opsiyonel)
-    # Markdown'da belirtildiği gibi, müşteriye bilgi verilip verilmediğini takip eder.
+    reason = models.TextField(blank=True, null=True)
     client_notified = models.BooleanField(default=False)
 
     def __str__(self):
-        return f"İptal Edilen Randevu: {self.appointment}"
+        return f"İptal: {self.appointment}"
+
+    class Meta:
+        verbose_name = "İptal Edilen Randevu Kaydı"
+        verbose_name_plural = "İptal Edilen Randevu Kayıtları"
