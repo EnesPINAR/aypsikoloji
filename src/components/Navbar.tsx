@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { HeartPulse, Menu, X, LogIn, LogOut, LayoutDashboard, Calendar } from "lucide-react";
+import { HeartPulse, Menu, X, LogIn, LogOut, LayoutDashboard, Calendar, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ModeToggle } from "./ModeToggle";
 import { useAuth } from "@/context/AuthContext";
@@ -65,11 +65,18 @@ export function Navbar() {
                       </Link>
                     </Button>
                   ) : (
-                    <Button asChild size="sm">
-                      <Link to="/randevu">
-                        <Calendar size={15} /> Randevularım
-                      </Link>
-                    </Button>
+                    <>
+                      <Button asChild size="sm">
+                        <Link to="/randevu">
+                          <Calendar size={15} /> Randevularım
+                        </Link>
+                      </Button>
+                      <Button asChild variant="outline" size="sm">
+                        <Link to="/profil">
+                          <User size={15} /> Profilim
+                        </Link>
+                      </Button>
+                    </>
                   )}
                   <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground hover:text-destructive">
                     <LogOut size={15} /> Çıkış
@@ -159,6 +166,16 @@ export function Navbar() {
                 >
                   <Calendar size={18} /> Randevu Sistemi
                 </Link>
+
+                {user && role !== "psychologist" && (
+                  <Link
+                    to="/profil"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="text-base font-semibold text-primary p-2 rounded-md bg-primary/10 flex items-center gap-2"
+                  >
+                    <User size={18} /> Profilim & Hesap Ayarları
+                  </Link>
+                )}
               </nav>
             </div>
 
@@ -194,4 +211,5 @@ export function Navbar() {
     </>
   );
 }
+
 

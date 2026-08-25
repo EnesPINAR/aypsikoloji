@@ -1,10 +1,13 @@
+import random
 from django.shortcuts import render
-from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout
+from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout, update_session_auth_hash
 from django.contrib.auth.models import User
 from django.utils import timezone
 from django.utils.timezone import localtime
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import ensure_csrf_cookie
+from django.core.mail import send_mail
+from django.conf import settings
 from rest_framework import viewsets, generics, status, permissions
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -17,7 +20,8 @@ from .models import (
     WeeklySchedule,
     DateOverride,
     Appointment,
-    CancelledAppointmentLog
+    CancelledAppointmentLog,
+    EmailVerificationCode
 )
 from .serializers import (
     UserSerializer,
@@ -28,8 +32,12 @@ from .serializers import (
     WeeklyScheduleSerializer,
     DateOverrideSerializer,
     AppointmentSerializer,
-    ClientCreateAppointmentSerializer
+    ClientCreateAppointmentSerializer,
+    ClientProfileUpdateSerializer,
+    SendVerificationCodeSerializer,
+    VerifyAndUpdateProfileSerializer
 )
+
 
 
 # --- Yetkilendirme İzin Sınıfları (Custom Permissions) ---
@@ -659,4 +667,214 @@ class PublicAvailableSlotsView(APIView):
 
         slots = get_available_slots_for_date(psychologist, target_date)
         return Response(slots, status=status.HTTP_200_OK)
+
+
+# --- Danışan Profil & Doğrulama View'ları ---
+
+class ClientProfileDetailView(APIView):
+    """
+    Giriş yapmış danışanın profil bilgilerini görüntülemesi ve temel bilgilerini (ad/soyad) güncellemesi.
+    GET /api/client/profile/
+    PUT /api/client/profile/
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        user = request.user
+        client_profile = getattr(user, 'client_profile', None)
+
+        booked_count = Appointment.objects.filter(client=client_profile, status='BOOKED').count() if client_profile else 0
+        completed_count = Appointment.objects.filter(client=client_profile, status='COMPLETED').count() if client_profile else 0
+        cancelled_count = Appointment.objects.filter(client=client_profile, status='CANCELLED').count() if client_profile else 0
+
+        data = {
+            'id': user.id,
+            'username': user.username,
+            'first_name': user.first_name,
+            'last_name': user.last_name,
+            'email': user.email,
+            'phone': client_profile.phone if client_profile else '',
+            'status': client_profile.status if client_profile else 'APPROVED',
+            'status_display': client_profile.get_status_display() if client_profile else 'Onaylı',
+            'created_at': client_profile.created_at if client_profile else user.date_joined,
+            'stats': {
+                'booked': booked_count,
+                'completed': completed_count,
+                'cancelled': cancelled_count,
+                'total': booked_count + completed_count + cancelled_count
+            }
+        }
+        return Response(data, status=status.HTTP_200_OK)
+
+    def put(self, request):
+        user = request.user
+        serializer = ClientProfileUpdateSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        user.first_name = serializer.validated_data['first_name']
+        user.last_name = serializer.validated_data['last_name']
+        user.save(update_fields=['first_name', 'last_name'])
+
+        return Response({
+            'message': 'Profil bilgileriniz başarıyla güncellendi.',
+            'first_name': user.first_name,
+            'last_name': user.last_name
+        }, status=status.HTTP_200_OK)
+
+
+class ClientSendVerificationCodeView(APIView):
+    """
+    Telefon, E-posta veya Şifre değişikliği için kayıtlı e-posta adresine 6 haneli doğrulama kodu gönderir.
+    POST /api/client/profile/send-verification-code/
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        serializer = SendVerificationCodeSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        purpose = serializer.validated_data['purpose']
+        new_value = serializer.validated_data.get('new_value', '').strip()
+
+        # Önceki kullanılmamış kodları geçersiz kıl
+        EmailVerificationCode.objects.filter(user=user, purpose=purpose, is_used=False).update(is_used=True)
+
+        # 6 haneli rastgele OTP kodu üret
+        code = f"{random.randint(100000, 999999)}"
+        expires_at = timezone.now() + timedelta(minutes=10)
+
+        EmailVerificationCode.objects.create(
+            user=user,
+            code=code,
+            purpose=purpose,
+            new_value=new_value,
+            expires_at=expires_at
+        )
+
+        # E-posta Başlığı ve İçeriği
+        purpose_names = {
+            'CHANGE_PHONE': 'Telefon Numarası Değişikliği',
+            'CHANGE_EMAIL': 'E-posta Adresi Değişikliği',
+            'CHANGE_PASSWORD': 'Şifre Değişikliği'
+        }
+        purpose_title = purpose_names.get(purpose, 'Hesap Doğrulama')
+
+        subject = f"AyPsikoloji - {purpose_title} Doğrulama Kodunuz: {code}"
+        message = (
+            f"Merhaba {user.first_name or user.username},\n\n"
+            f"AyPsikoloji hesabınızda '{purpose_title}' talebinde bulundunuz.\n\n"
+            f"Doğrulama Kodunuz: {code}\n\n"
+            f"Bu kod 10 dakika boyunca geçerlidir. Eğer bu talebi siz yapmadıysanız lütfen bu e-postayı dikkate almayınız.\n\n"
+            f"Sağlıklı günler dileriz,\nAyPsikoloji Ekibi"
+        )
+
+        try:
+            send_mail(
+                subject=subject,
+                message=message,
+                from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'noreply@aypsikoloji.com'),
+                recipient_list=[user.email],
+                fail_silently=False
+            )
+        except Exception as e:
+            # Geliştirme/test ortamında hata oluşsa bile konsola bastırılır
+            print(f"[Email Send Log]: Code: {code} for {user.email} (Error: {e})")
+
+        return Response({
+            'message': f'6 haneli doğrulama kodunuz {user.email} adresine gönderildi.',
+            'expires_in_minutes': 10
+        }, status=status.HTTP_200_OK)
+
+
+class ClientVerifyAndUpdateProfileView(APIView):
+    """
+    E-postaya gelen 6 haneli kodu doğrulayarak telefon, e-posta veya şifre güncellemesini tamamlar.
+    POST /api/client/profile/verify-and-update/
+    """
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request):
+        user = request.user
+        serializer = VerifyAndUpdateProfileSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        purpose = serializer.validated_data['purpose']
+        code = serializer.validated_data['code']
+        new_value = serializer.validated_data.get('new_value', '').strip()
+        new_password = serializer.validated_data.get('new_password', '')
+
+        # Kodu doğrula
+        verification = EmailVerificationCode.objects.filter(
+            user=user,
+            purpose=purpose,
+            code=code,
+            is_used=False,
+            expires_at__gte=timezone.now()
+        ).first()
+
+        if not verification:
+            return Response({
+                'error': 'Geçersiz veya süresi dolmuş doğrulama kodu. Lütfen tekrar kod talep ediniz.'
+            }, status=status.HTTP_400_BAD_REQUEST)
+
+        # 1. Telefon Numarası Güncelleme
+        if purpose == 'CHANGE_PHONE':
+            phone_to_set = new_value or verification.new_value
+            if not phone_to_set:
+                return Response({'error': 'Yeni telefon numarası belirtilmedi.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            if ClientProfile.objects.filter(phone=phone_to_set).exclude(user=user).exists():
+                return Response({'error': 'Bu telefon numarası başka bir danışan tarafından kullanılıyor.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            client_profile = getattr(user, 'client_profile', None)
+            if client_profile:
+                client_profile.phone = phone_to_set
+                client_profile.save(update_fields=['phone'])
+
+            msg = 'Telefon numaranız başarıyla güncellendi.'
+
+        # 2. E-posta Adresi Güncelleme
+        elif purpose == 'CHANGE_EMAIL':
+            email_to_set = (new_value or verification.new_value).lower()
+            if not email_to_set:
+                return Response({'error': 'Yeni e-posta adresi belirtilmedi.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            if User.objects.filter(email__iexact=email_to_set).exclude(pk=user.pk).exists():
+                return Response({'error': 'Bu e-posta adresi ile kayıtlı başka bir hesap bulunmaktadır.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            user.email = email_to_set
+            user.save(update_fields=['email'])
+            msg = 'E-posta adresiniz başarıyla güncellendi.'
+
+        # 3. Şifre Güncelleme
+        elif purpose == 'CHANGE_PASSWORD':
+            if not new_password or len(new_password) < 6:
+                return Response({'error': 'Yeni şifre en az 6 karakter olmalıdır.'}, status=status.HTTP_400_BAD_REQUEST)
+
+            user.set_password(new_password)
+            user.save()
+            update_session_auth_hash(request, user) # Oturumun düşmesini engelle
+            msg = 'Şifreniz başarıyla değiştirildi.'
+
+        else:
+            return Response({'error': 'Bilinmeyen işlem türü.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Kodu kullanıldı olarak işaretle
+        verification.is_used = True
+        verification.save(update_fields=['is_used'])
+
+        client_profile = getattr(user, 'client_profile', None)
+        return Response({
+            'message': msg,
+            'user': {
+                'id': user.id,
+                'username': user.username,
+                'email': user.email,
+                'first_name': user.first_name,
+                'last_name': user.last_name,
+                'phone': client_profile.phone if client_profile else ''
+            }
+        }, status=status.HTTP_200_OK)
+
 

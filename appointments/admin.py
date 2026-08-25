@@ -5,8 +5,10 @@ from .models import (
     WeeklySchedule,
     DateOverride,
     Appointment,
-    CancelledAppointmentLog
+    CancelledAppointmentLog,
+    EmailVerificationCode
 )
+
 
 @admin.register(Psychologist)
 class PsychologistAdmin(admin.ModelAdmin):
@@ -64,4 +66,12 @@ class AppointmentAdmin(admin.ModelAdmin):
 class CancelledAppointmentLogAdmin(admin.ModelAdmin):
     list_display = ['appointment', 'cancelled_by', 'cancelled_at', 'client_notified']
     list_filter = ['cancelled_by', 'client_notified']
+
+
+@admin.register(EmailVerificationCode)
+class EmailVerificationCodeAdmin(admin.ModelAdmin):
+    list_display = ['user', 'purpose', 'code', 'new_value', 'created_at', 'expires_at', 'is_used']
+    list_filter = ['purpose', 'is_used', 'created_at']
+    search_fields = ['user__username', 'user__email', 'code', 'new_value']
+
 

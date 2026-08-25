@@ -11,8 +11,10 @@ from appointments.models import (
     WeeklySchedule,
     DateOverride,
     Appointment,
-    CancelledAppointmentLog
+    CancelledAppointmentLog,
+    EmailVerificationCode
 )
+
 from appointments.views import get_available_slots_for_date
 
 
@@ -237,3 +239,85 @@ class AppointmentSystemTests(TestCase):
         saturday = WeeklySchedule.objects.get(psychologist=self.psychologist, day_of_week=5)
         self.assertTrue(saturday.is_active)
         self.assertEqual(saturday.start_time.strftime('%H:%M'), '10:00')
+
+    def test_client_can_update_basic_profile_names(self):
+        """ Danışan ad ve soyadını profilinden güncelleyebilmelidir """
+        self.client.force_authenticate(user=self.approved_client_user)
+
+        res = self.client.put('/api/client/profile/', {
+            'first_name': 'Ahmet Can',
+            'last_name': 'Demir'
+        }, format='json')
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+
+        self.approved_client_user.refresh_from_db()
+        self.assertEqual(self.approved_client_user.first_name, 'Ahmet Can')
+        self.assertEqual(self.approved_client_user.last_name, 'Demir')
+
+    def test_client_can_change_phone_with_email_verification_code(self):
+        """ Danışan telefon numarasını e-posta doğrulama kodu ile değiştirebilmelidir """
+        self.client.force_authenticate(user=self.approved_client_user)
+
+        # 1. Kod gönder
+        send_res = self.client.post('/api/client/profile/send-verification-code/', {
+            'purpose': 'CHANGE_PHONE',
+            'new_value': '05441112233'
+        }, format='json')
+        self.assertEqual(send_res.status_code, status.HTTP_200_OK)
+
+        # Veritabanında oluşan kodu al
+        code_obj = EmailVerificationCode.objects.filter(
+            user=self.approved_client_user,
+            purpose='CHANGE_PHONE',
+            is_used=False
+        ).first()
+        self.assertIsNotNone(code_obj)
+        self.assertEqual(len(code_obj.code), 6)
+
+        # 2. Kodu doğrula ve telefonu güncelle
+        verify_res = self.client.post('/api/client/profile/verify-and-update/', {
+            'purpose': 'CHANGE_PHONE',
+            'code': code_obj.code,
+            'new_value': '05441112233'
+        }, format='json')
+        self.assertEqual(verify_res.status_code, status.HTTP_200_OK)
+
+        # Telefonun güncellendiğini ve kodun kullanıldığını doğrula
+        self.approved_client_user.client_profile.refresh_from_db()
+        self.assertEqual(self.approved_client_user.client_profile.phone, '05441112233')
+        code_obj.refresh_from_db()
+        self.assertTrue(code_obj.is_used)
+
+
+    def test_client_can_change_password_with_email_verification_code(self):
+        """ Danışan şifresini e-posta doğrulama kodu ile değiştirebilmelidir """
+        self.client.force_authenticate(user=self.approved_client_user)
+
+        # 1. Kod gönder
+        send_res = self.client.post('/api/client/profile/send-verification-code/', {
+            'purpose': 'CHANGE_PASSWORD'
+        }, format='json')
+        self.assertEqual(send_res.status_code, status.HTTP_200_OK)
+
+        code_obj = EmailVerificationCode.objects.filter(
+            user=self.approved_client_user,
+            purpose='CHANGE_PASSWORD',
+            is_used=False
+        ).first()
+
+        # 2. Kodu doğrula ve şifreyi güncelle
+        verify_res = self.client.post('/api/client/profile/verify-and-update/', {
+            'purpose': 'CHANGE_PASSWORD',
+            'code': code_obj.code,
+            'new_password': 'yeniGuvenliSifre123!'
+        }, format='json')
+        self.assertEqual(verify_res.status_code, status.HTTP_200_OK)
+
+        # Yeni şifre ile giriş kontrolü
+        self.client.logout()
+        login_res = self.client.post('/api/auth/login/', {
+            'username': self.approved_client_user.email,
+            'password': 'yeniGuvenliSifre123!'
+        }, format='json')
+        self.assertEqual(login_res.status_code, status.HTTP_200_OK)
+

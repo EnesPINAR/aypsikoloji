@@ -6,6 +6,7 @@ import { HakkimizdaPage } from "./pages/About";
 import { IletisimPage } from "./pages/Contact";
 import { AuthPage } from "./pages/Auth";
 import { PsychologistDashboard } from "./pages/PsychologistDashboard";
+import { ClientProfilePage } from "./pages/ClientProfile";
 import { AuthProvider } from "./context/AuthContext";
 import { Toaster } from "@/components/ui/sonner";
 import "./App.css";
@@ -19,6 +20,7 @@ function App() {
           <Route element={<Layout />}>
             <Route index element={<HomePage />} />
             <Route path="/randevu" element={<AppointmentPage />} />
+            <Route path="/profil" element={<ClientProfilePage />} />
             <Route path="/giris" element={<AuthPage />} />
             <Route path="/kayit-ol" element={<AuthPage />} />
             <Route path="/panel/psikolog" element={<PsychologistDashboard />} />
@@ -30,6 +32,7 @@ function App() {
     </AuthProvider>
   );
 }
+
 
 export default App;
 

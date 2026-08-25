@@ -15,7 +15,10 @@ from .views import (
     PsychologistCalendarOverviewView,
     ClientAvailableSlotsView,
     ClientAppointmentViewSet,
-    PublicAvailableSlotsView
+    PublicAvailableSlotsView,
+    ClientProfileDetailView,
+    ClientSendVerificationCodeView,
+    ClientVerifyAndUpdateProfileView
 )
 
 admin.site.site_title = "Randevu Yönetim Paneli"
@@ -44,7 +47,10 @@ urlpatterns = [
     path('psychologist/calendar-overview/', PsychologistCalendarOverviewView.as_view(), name='psychologist-calendar-overview'),
     path('psychologist/', include(psychologist_router.urls)),
 
-    # Danışan Portalı & Randevu
+    # Danışan Portalı & Randevu & Profil
+    path('client/profile/', ClientProfileDetailView.as_view(), name='client-profile'),
+    path('client/profile/send-verification-code/', ClientSendVerificationCodeView.as_view(), name='client-profile-send-code'),
+    path('client/profile/verify-and-update/', ClientVerifyAndUpdateProfileView.as_view(), name='client-profile-verify-update'),
     path('client/available-slots/', ClientAvailableSlotsView.as_view(), name='client-available-slots'),
     path('client/appointments/', ClientAppointmentViewSet.as_view({'post': 'create'}), name='client-create-appointment'),
     path('client/', include(client_router.urls)),
@@ -52,4 +58,5 @@ urlpatterns = [
     # Kamuya Açık / Geriye Dönük Uyumluluk
     path('public/available-slots/', PublicAvailableSlotsView.as_view(), name='public-available-slots'),
 ]
+
 

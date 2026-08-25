@@ -159,3 +159,32 @@ class CancelledAppointmentLog(models.Model):
     class Meta:
         verbose_name = "İptal Edilen Randevu Kaydı"
         verbose_name_plural = "İptal Edilen Randevu Kayıtları"
+
+
+class EmailVerificationCode(models.Model):
+    """ E-posta ile doğrulama kodları (Şifre, Telefon, E-posta değişiklikleri için) """
+    PURPOSE_CHOICES = [
+        ('CHANGE_PHONE', 'Telefon Değiştirme'),
+        ('CHANGE_EMAIL', 'E-posta Değiştirme'),
+        ('CHANGE_PASSWORD', 'Şifre Değiştirme'),
+    ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='email_verification_codes')
+    code = models.CharField(max_length=6)
+    purpose = models.CharField(max_length=30, choices=PURPOSE_CHOICES)
+    new_value = models.CharField(max_length=255, blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    is_used = models.BooleanField(default=False)
+
+    def is_valid(self):
+        return not self.is_used and timezone.now() <= self.expires_at
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = "E-posta Doğrulama Kodu"
+        verbose_name_plural = "E-posta Doğrulama Kodları"
+
+    def __str__(self):
+        return f"{self.user.username} - {self.get_purpose_display()} ({self.code})"
+

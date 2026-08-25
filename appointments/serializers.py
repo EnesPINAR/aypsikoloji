@@ -149,4 +149,48 @@ class AppointmentSerializer(serializers.ModelSerializer):
 class ClientCreateAppointmentSerializer(serializers.Serializer):
     date = serializers.DateField(required=True)
     time = serializers.TimeField(required=True)
-    client_notes = serializers.CharField(required=False, allow_blank=True, default="")
+    client_notes = serializers.CharField(required=False, allow_blank=True, default="")
+
+
+class ClientProfileUpdateSerializer(serializers.Serializer):
+    first_name = serializers.CharField(max_length=100, required=True)
+    last_name = serializers.CharField(max_length=100, required=True)
+
+
+class SendVerificationCodeSerializer(serializers.Serializer):
+    purpose = serializers.ChoiceField(choices=['CHANGE_PHONE', 'CHANGE_EMAIL', 'CHANGE_PASSWORD'])
+    new_value = serializers.CharField(max_length=255, required=False, allow_blank=True, default="")
+
+    def validate(self, attrs):
+        purpose = attrs.get('purpose')
+        new_value = attrs.get('new_value', '').strip()
+
+        if purpose == 'CHANGE_PHONE':
+            if not new_value:
+                raise serializers.ValidationError({"new_value": "Yeni telefon numarası zorunludur."})
+            if ClientProfile.objects.filter(phone=new_value).exists():
+                raise serializers.ValidationError({"new_value": "Bu telefon numarası başka bir danışan tarafından kullanılıyor."})
+        elif purpose == 'CHANGE_EMAIL':
+            if not new_value:
+                raise serializers.ValidationError({"new_value": "Yeni e-posta adresi zorunludur."})
+            if User.objects.filter(email__iexact=new_value).exists():
+                raise serializers.ValidationError({"new_value": "Bu e-posta adresi ile kayıtlı başka bir hesap bulunmaktadır."})
+        return attrs
+
+
+class VerifyAndUpdateProfileSerializer(serializers.Serializer):
+    purpose = serializers.ChoiceField(choices=['CHANGE_PHONE', 'CHANGE_EMAIL', 'CHANGE_PASSWORD'])
+    code = serializers.CharField(max_length=6, min_length=6, required=True)
+    new_value = serializers.CharField(max_length=255, required=False, allow_blank=True, default="")
+    new_password = serializers.CharField(min_length=6, required=False, allow_blank=True, default="")
+
+    def validate(self, attrs):
+        purpose = attrs.get('purpose')
+        if purpose == 'CHANGE_PASSWORD':
+            if not attrs.get('new_password'):
+                raise serializers.ValidationError({"new_password": "Yeni şifre zorunludur."})
+        else:
+            if not attrs.get('new_value'):
+                raise serializers.ValidationError({"new_value": "Yeni değer zorunludur."})
+        return attrs
+
