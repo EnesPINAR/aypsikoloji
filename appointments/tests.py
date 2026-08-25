@@ -174,12 +174,26 @@ class AppointmentSystemTests(TestCase):
         res_slots_after = self.client.get(f'/api/client/available-slots/?date={d_str}')
         self.assertNotIn('10:00', res_slots_after.data)
 
-        # 4. Aynı saate tekrar randevu alınmaya çalışıldığında 400 dönmeli (Double booking engeli)
-        book_again = self.client.post('/api/client/appointments/', {
+        # 4. Danışanın henüz tamamlanmamış randevusu varken farklı bir saate/güne de randevu alamaması kontrolü
+        book_another_slot = self.client.post('/api/client/appointments/', {
             'date': d_str,
-            'time': '10:00'
+            'time': '11:00'
         }, format='json')
-        self.assertEqual(book_again.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(book_another_slot.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('aktif bir randevunuz bulunmaktadır', book_another_slot.data.get('error', ''))
+
+        # 5. Mevcut randevu tamamlandığında (veya iptal edildiğinde) yeni randevu alabilmesi kontrolü
+        booked_app = Appointment.objects.get(client=self.approved_client_user.client_profile, status='BOOKED')
+        booked_app.status = 'COMPLETED'
+        booked_app.save()
+
+
+        book_new_res = self.client.post('/api/client/appointments/', {
+            'date': d_str,
+            'time': '11:00'
+        }, format='json')
+        self.assertEqual(book_new_res.status_code, status.HTTP_201_CREATED)
+
 
     def test_psychologist_date_override_blocks_day(self):
         """ Psikoloğun kapattığı/tatil ilan ettiği günde danışana slot çıkmamalıdır """

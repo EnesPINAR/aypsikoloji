@@ -27,7 +27,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
-import { formatDateToYMD } from "@/lib/utils";
+import { formatDateToYMD, parseYMDToDate } from "@/lib/utils";
 
 export function AppointmentPage() {
   const { user, isApproved, clientProfile, role, isLoading: authLoading } = useAuth();
@@ -71,6 +71,9 @@ export function AppointmentPage() {
       fetchMyAppointments();
     }
   }, [user, isApproved]);
+
+  const activeAppointment = myAppointments.find((a) => a.status === "BOOKED");
+
 
   const handleDateSelect = (date: Date | undefined) => {
     if (!date) return;
@@ -295,24 +298,99 @@ export function AppointmentPage() {
 
       {/* ================= TAB 1: YENİ RANDEVU AL ================= */}
       {activeTab === "book" && (
-        <div className="space-y-10">
-          {/* 1. Adım: Tarih Seçimi */}
-          <section className="space-y-4">
-            <h2 className="text-xl font-bold text-foreground flex items-center gap-3">
-              <CalendarIcon className="text-primary" size={22} /> 1. Adım: Tarih Seçin
-            </h2>
-            <div className="bg-card border rounded-xl p-4 inline-block shadow-xs">
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={handleDateSelect}
-                disabled={(date) =>
-                  date < new Date(new Date().setDate(new Date().getDate() - 1))
-                }
-                className="rounded-md mx-auto"
-              />
+        <>
+          {activeAppointment ? (
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-6 sm:p-8 text-center space-y-6 max-w-2xl mx-auto shadow-sm animate-in fade-in-50">
+              <div className="w-16 h-16 bg-amber-500/20 text-amber-600 dark:text-amber-400 rounded-full flex items-center justify-center mx-auto">
+                <AlertCircle size={36} />
+              </div>
+
+              <div className="space-y-2">
+                <h2 className="text-2xl font-bold text-foreground">
+                  Henüz Tamamlanmamış Aktif Bir Randevunuz Bulunuyor
+                </h2>
+                <p className="text-muted-foreground text-sm sm:text-base leading-relaxed">
+                  Seans takibinin sağlıklı yürütülebilmesi amacıyla, sistemimizde tamamlanmamış aktif bir randevunuz varken yeni bir randevu alamazsınız. Yeni randevu alabilmek için mevcut randevunuzun gerçekleşmesi (tamamlanması) veya iptal edilmesi gerekmektedir.
+                </p>
+              </div>
+
+              {/* Aktif Randevu Bilgi Kartı */}
+              <div className="bg-card border rounded-xl p-5 text-left shadow-xs space-y-3">
+                <div className="flex items-center justify-between border-b pb-2">
+                  <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                    Planlanmış Seansınız
+                  </span>
+                  <span className="text-xs bg-blue-500/10 text-blue-600 font-semibold px-2.5 py-1 rounded-full">
+                    {activeAppointment.status_display || "Rezerve Edildi (Bekliyor)"}
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <span className="text-xs text-muted-foreground block">Tarih:</span>
+                    <strong className="text-foreground font-semibold">
+                      {parseYMDToDate(activeAppointment.date).toLocaleDateString("tr-TR", {
+                        day: "numeric",
+                        month: "long",
+                        year: "numeric",
+                        weekday: "long",
+                      })}
+                    </strong>
+                  </div>
+                  <div>
+                    <span className="text-xs text-muted-foreground block">Saat:</span>
+                    <strong className="text-primary font-bold text-base">
+                      {activeAppointment.time.slice(0, 5)}
+                    </strong>
+                  </div>
+                </div>
+
+                {activeAppointment.client_notes && (
+                  <div className="text-xs text-muted-foreground pt-2 border-t">
+                    <span>Seans Notunuz: </span>
+                    <span className="italic text-foreground">{activeAppointment.client_notes}</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Eylemler */}
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+                <Button
+                  variant="default"
+                  onClick={() => setActiveTab("my-appointments")}
+                  className="w-full sm:w-auto gap-2"
+                >
+                  <CalendarIcon size={16} /> Randevularımı Görüntüle
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => handleCancelMyAppointment(activeAppointment.id)}
+                  className="w-full sm:w-auto text-destructive hover:bg-destructive/10 hover:text-destructive border-destructive/30"
+                >
+                  Randevuyu İptal Et ve Yeni Saat Seç
+                </Button>
+              </div>
             </div>
-          </section>
+          ) : (
+            <div className="space-y-10">
+              {/* 1. Adım: Tarih Seçimi */}
+              <section className="space-y-4">
+                <h2 className="text-xl font-bold text-foreground flex items-center gap-3">
+                  <CalendarIcon className="text-primary" size={22} /> 1. Adım: Tarih Seçin
+                </h2>
+                <div className="bg-card border rounded-xl p-4 inline-block shadow-xs">
+                  <Calendar
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={handleDateSelect}
+                    disabled={(date) =>
+                      date < new Date(new Date().setDate(new Date().getDate() - 1))
+                    }
+                    className="rounded-md mx-auto"
+                  />
+                </div>
+              </section>
+
 
           {/* Yükleniyor Uyarısı */}
           {isLoading && (
@@ -412,6 +490,9 @@ export function AppointmentPage() {
           )}
         </div>
       )}
+    </>
+  )}
+
 
       {/* ================= TAB 2: RANDEVULARIM ================= */}
       {activeTab === "my-appointments" && (

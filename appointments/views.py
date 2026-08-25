@@ -580,6 +580,20 @@ class ClientAppointmentViewSet(viewsets.ModelViewSet):
         if not psychologist:
             return Response({'error': 'Psikolog profili bulunamadı.'}, status=status.HTTP_400_BAD_REQUEST)
 
+        client_profile = getattr(request.user, 'client_profile', None)
+
+        # 0. Danışanın henüz tamamlanmamış aktif bir randevusu var mı kontrolü
+        if client_profile:
+            active_appointment = Appointment.objects.filter(
+                client=client_profile,
+                status='BOOKED'
+            ).first()
+            if active_appointment:
+                return Response({
+                    'error': 'Zaten henüz tamamlanmamış aktif bir randevunuz bulunmaktadır. Yeni bir randevu alabilmek için mevcut randevunuzun tamamlanması veya iptal edilmesi gerekmektedir.',
+                    'active_appointment': AppointmentSerializer(active_appointment).data
+                }, status=status.HTTP_400_BAD_REQUEST)
+
         # 1. Çift rezervasyon kontrolü
         if Appointment.objects.filter(psychologist=psychologist, date=target_date, time=target_time, status='BOOKED').exists():
             return Response({'error': 'Seçtiğiniz saat dilimi doludur. Lütfen başka bir saat seçiniz.'}, status=status.HTTP_400_BAD_REQUEST)
@@ -589,8 +603,6 @@ class ClientAppointmentViewSet(viewsets.ModelViewSet):
         time_str = target_time.strftime('%H:%M')
         if time_str not in avail_slots:
             return Response({'error': 'Seçilen saatte psikoloğun müsaitliği bulunmamaktadır.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        client_profile = getattr(request.user, 'client_profile', None)
 
         appointment = Appointment.objects.create(
             psychologist=psychologist,
@@ -603,6 +615,7 @@ class ClientAppointmentViewSet(viewsets.ModelViewSet):
             status='BOOKED',
             client_notes=client_notes
         )
+
 
         return Response(AppointmentSerializer(appointment).data, status=status.HTTP_201_CREATED)
 
