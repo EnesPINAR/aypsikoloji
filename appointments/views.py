@@ -852,10 +852,16 @@ class ClientVerifyAndUpdateProfileView(APIView):
             if not new_password or len(new_password) < 6:
                 return Response({'error': 'Yeni şifre en az 6 karakter olmalıdır.'}, status=status.HTTP_400_BAD_REQUEST)
 
+            if user.check_password(new_password):
+                return Response({
+                    'error': 'Yeni şifreniz mevcut şifrenizle aynı olamaz. Lütfen farklı bir şifre belirleyiniz.'
+                }, status=status.HTTP_400_BAD_REQUEST)
+
             user.set_password(new_password)
             user.save()
             update_session_auth_hash(request, user) # Oturumun düşmesini engelle
             msg = 'Şifreniz başarıyla değiştirildi.'
+
 
         else:
             return Response({'error': 'Bilinmeyen işlem türü.'}, status=status.HTTP_400_BAD_REQUEST)

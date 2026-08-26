@@ -321,3 +321,30 @@ class AppointmentSystemTests(TestCase):
         }, format='json')
         self.assertEqual(login_res.status_code, status.HTTP_200_OK)
 
+    def test_client_cannot_set_same_password(self):
+        """ Danışan mevcut şifresini yeni şifresi olarak belirleyememelidir """
+        self.client.force_authenticate(user=self.approved_client_user)
+
+        # 1. Kod gönder
+        self.client.post('/api/client/profile/send-verification-code/', {
+            'purpose': 'CHANGE_PASSWORD'
+        }, format='json')
+
+        code_obj = EmailVerificationCode.objects.filter(
+            user=self.approved_client_user,
+            purpose='CHANGE_PASSWORD',
+            is_used=False
+        ).first()
+
+        # 2. Mevcut şifreyi (ClientPassword123!) tekrar yeni şifre olarak girmeye çalış
+        verify_res = self.client.post('/api/client/profile/verify-and-update/', {
+            'purpose': 'CHANGE_PASSWORD',
+            'code': code_obj.code,
+            'new_password': 'ClientPassword123!'  # Setup'taki mevcut şifre
+        }, format='json')
+
+        self.assertEqual(verify_res.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn('aynı olamaz', verify_res.data.get('error', ''))
+
+
+
