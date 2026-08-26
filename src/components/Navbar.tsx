@@ -48,9 +48,9 @@ export function Navbar() {
                 {role === "psychologist" && (
                   <Link
                     to="/panel/psikolog"
-                    className="text-sm font-semibold text-primary hover:underline flex items-center gap-1.5"
+                    className="text-sm font-semibold text-primary hover:underline"
                   >
-                    <LayoutDashboard size={16} /> Psikolog Paneli
+                    Psikolog Paneli
                   </Link>
                 )}
               </nav>
@@ -59,17 +59,10 @@ export function Navbar() {
             <div className="flex items-center gap-2">
               <ModeToggle />
 
-
               {/* Desktop Actions */}
               {user ? (
                 <div className="hidden sm:flex items-center gap-2">
-                  {role === "psychologist" ? (
-                    <Button asChild variant="outline" size="sm">
-                      <Link to="/panel/psikolog">
-                        <LayoutDashboard size={15} /> Panel
-                      </Link>
-                    </Button>
-                  ) : (
+                  {role !== "psychologist" && (
                     <>
                       <Button asChild size="sm">
                         <Link to="/randevu">
@@ -88,6 +81,7 @@ export function Navbar() {
                   </Button>
                 </div>
               ) : (
+
                 <div className="hidden sm:flex items-center gap-2">
                   <Button asChild variant="ghost" size="sm">
                     <Link to="/giris">
