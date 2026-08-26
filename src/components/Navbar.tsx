@@ -25,35 +25,40 @@ export function Navbar() {
       <header className="bg-background/80 backdrop-blur-md sticky top-0 z-40 border-b">
         <div className="container mx-auto px-4">
           <div className="flex items-center justify-between h-16">
-            <Link
-              to="/"
-              className="flex items-center gap-2 text-xl font-bold text-foreground"
-            >
-              <HeartPulse className="text-primary" />
-              <span>AyPsikoloji</span>
-            </Link>
-            <nav className="hidden md:flex items-center gap-6">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.label}
-                  to={link.to}
-                  className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  {link.label}
-                </Link>
-              ))}
+            {/* Sol Taraf: Logo ve Navigasyon Bağlantıları Yan Yana */}
+            <div className="flex items-center gap-8">
+              <Link
+                to="/"
+                className="flex items-center gap-2 text-xl font-bold text-foreground shrink-0"
+              >
+                <HeartPulse className="text-primary" />
+                <span>AyPsikoloji</span>
+              </Link>
+              <nav className="hidden md:flex items-center gap-6">
+                {navLinks.map((link) => (
+                  <Link
+                    key={link.label}
+                    to={link.to}
+                    className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {link.label}
+                  </Link>
+                ))}
 
-              {role === "psychologist" && (
-                <Link
-                  to="/panel/psikolog"
-                  className="text-sm font-semibold text-primary hover:underline flex items-center gap-1.5"
-                >
-                  <LayoutDashboard size={16} /> Psikolog Paneli
-                </Link>
-              )}
-            </nav>
+                {role === "psychologist" && (
+                  <Link
+                    to="/panel/psikolog"
+                    className="text-sm font-semibold text-primary hover:underline flex items-center gap-1.5"
+                  >
+                    <LayoutDashboard size={16} /> Psikolog Paneli
+                  </Link>
+                )}
+              </nav>
+            </div>
+
             <div className="flex items-center gap-2">
               <ModeToggle />
+
 
               {/* Desktop Actions */}
               {user ? (
