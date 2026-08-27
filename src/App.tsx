@@ -14,8 +14,9 @@ import "./App.css";
 function App() {
   return (
     <AuthProvider>
-      <Toaster richColors position="top-right" />
+      <Toaster richColors position="top-right" closeButton duration={4000} />
       <BrowserRouter>
+
         <Routes>
           <Route element={<Layout />}>
             <Route index element={<HomePage />} />
