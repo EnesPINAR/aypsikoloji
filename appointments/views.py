@@ -153,34 +153,8 @@ class LoginView(APIView):
     """ Danışan veya Psikoloğun sisteme giriş yapması """
     permission_classes = [permissions.AllowAny]
 
-    def post(self, request):
-        login_identifier = request.data.get('username') or request.data.get('email') or request.data.get('phone')
-        password = request.data.get('password')
-
-        if not login_identifier or not password:
-            return Response({'error': 'Lütfen kullanıcı adı / e-posta ve şifre giriniz.'}, status=status.HTTP_400_BAD_REQUEST)
-
-        # 1. Doğrudan username ile dene
-        user = authenticate(request, username=login_identifier, password=password)
-
-        # 2. E-posta ile dene
-        if not user:
-            user_by_email = User.objects.filter(email__iexact=login_identifier).first()
-            if user_by_email:
-                user = authenticate(request, username=user_by_email.username, password=password)
-
-        # 3. Telefon ile dene
-        if not user:
-            client_by_phone = ClientProfile.objects.filter(phone=login_identifier).first()
-            if client_by_phone:
-                user = authenticate(request, username=client_by_phone.user.username, password=password)
-
-        if not user:
-            return Response({'error': 'Giriş bilgileri hatalı.'}, status=status.HTTP_401_UNAUTHORIZED)
-
+    def _login_user(self, request, user):
         auth_login(request, user)
-
-        # Kullanıcı rolü ve durum tespiti
         role = 'unknown'
         client_data = None
         is_approved = False
@@ -202,6 +176,37 @@ class LoginView(APIView):
             'is_approved': is_approved,
             'client_profile': client_data
         }, status=status.HTTP_200_OK)
+
+    def post(self, request):
+        raw_identifier = request.data.get('username') or request.data.get('email') or request.data.get('phone') or ''
+        login_identifier = raw_identifier.strip()
+        password = str(request.data.get('password') or '').strip()
+
+        if not login_identifier or not password:
+            return Response({'error': 'Lütfen kullanıcı adı / e-posta ve şifre giriniz.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # 1. E-posta ile dene (Büyük/küçük harf ve boşluk duyarsız)
+        user_by_email = User.objects.filter(email__iexact=login_identifier).first()
+        if user_by_email:
+            user = authenticate(request, username=user_by_email.username, password=password)
+            if user:
+                return self._login_user(request, user)
+
+        # 2. Telefon ile dene (Boşluksuz ve standart format)
+        phone_cleaned = login_identifier.replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
+        client_by_phone = ClientProfile.objects.filter(phone__in=[login_identifier, phone_cleaned]).first()
+        if client_by_phone:
+            user = authenticate(request, username=client_by_phone.user.username, password=password)
+            if user:
+                return self._login_user(request, user)
+
+        # 3. Doğrudan username ile dene
+        user = authenticate(request, username=login_identifier, password=password)
+        if user:
+            return self._login_user(request, user)
+
+        return Response({'error': 'Giriş bilgileri hatalı. Lütfen e-posta / telefon ve şifrenizi kontrol ediniz.'}, status=status.HTTP_401_UNAUTHORIZED)
+
 
 
 class LogoutView(APIView):

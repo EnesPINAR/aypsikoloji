@@ -70,8 +70,10 @@ export function PsychologistDashboard() {
     last_name: "",
     phone: "",
     email: "",
+    password: "",
     notes: "",
   });
+
 
   // Auth protection check
   useEffect(() => {
@@ -345,13 +347,17 @@ export function PsychologistDashboard() {
 
       const data = await res.json();
       if (res.ok) {
-        toast.success("Yeni danışan başarıyla oluşturuldu ve onaylandı!");
+        toast.success("Yeni danışan başarıyla oluşturuldu ve onaylandı!", {
+          description: `Giriş E-postası: ${newClientData.email} | Şifre: ${newClientData.password || newClientData.phone}`,
+          duration: 6000,
+        });
         setShowAddClientModal(false);
         setNewClientData({
           first_name: "",
           last_name: "",
           phone: "",
           email: "",
+          password: "",
           notes: "",
         });
         fetchClients();
@@ -361,6 +367,7 @@ export function PsychologistDashboard() {
       }
     } catch (e) {
       toast.error("Bağlantı hatası.");
+
     }
   };
 
@@ -1146,6 +1153,22 @@ export function PsychologistDashboard() {
               </div>
 
               <div className="space-y-1.5">
+                <Label htmlFor="man_password">Giriş Şifresi (Opsiyonel)</Label>
+                <Input
+                  id="man_password"
+                  type="text"
+                  placeholder="Boş bırakılırsa telefon numarası atanır"
+                  value={newClientData.password}
+                  onChange={(e) =>
+                    setNewClientData({ ...newClientData, password: e.target.value })
+                  }
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  * Danışan bu şifre veya varsayılan telefon numarası ile sisteme e-posta/telefon üzerinden giriş yapabilir.
+                </p>
+              </div>
+
+              <div className="space-y-1.5">
                 <Label htmlFor="man_notes">Danışan Hakkında Özel Notlar (Opsiyonel)</Label>
                 <Input
                   id="man_notes"
@@ -1158,8 +1181,9 @@ export function PsychologistDashboard() {
               </div>
 
               <p className="text-xs text-muted-foreground">
-                * Manuel eklenen danışan doğrudan <strong>Onaylı</strong> olarak kaydedilir. Varsayılan giriş şifresi telefon numarasıdır.
+                * Manuel eklenen danışan doğrudan <strong>Onaylı</strong> olarak kaydedilir.
               </p>
+
 
               <div className="flex items-center justify-end gap-2 pt-2">
                 <Button

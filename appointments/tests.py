@@ -346,5 +346,41 @@ class AppointmentSystemTests(TestCase):
         self.assertEqual(verify_res.status_code, status.HTTP_400_BAD_REQUEST)
         self.assertIn('aynı olamaz', verify_res.data.get('error', ''))
 
+    def test_manual_client_login_with_email_and_phone(self):
+        """ Psikoloğun manuel eklediği danışan hem e-postası hem de telefonu ile giriş yapabilmelidir """
+        self.client.force_authenticate(user=self.psych_user)
+
+        # 1. Psikolog manuel danışan ekler (şifre belirtmeden -> varsayılan telefon numarası)
+        create_res = self.client.post('/api/psychologist/clients/', {
+            'first_name': 'Zeynep',
+            'last_name': 'Kaya',
+            'phone': '05559876543',
+            'email': 'zeynep@test.com',
+            'notes': 'Manuel eklendi'
+        }, format='json')
+        self.assertEqual(create_res.status_code, status.HTTP_201_CREATED)
+
+        self.client.logout()
+
+        # 2. E-posta + Telefon şifresi ile giriş
+        email_login = self.client.post('/api/auth/login/', {
+            'username': ' zeynep@test.com ',  # Boşluklu e-posta
+            'password': '05559876543'
+        }, format='json')
+        self.assertEqual(email_login.status_code, status.HTTP_200_OK)
+        self.assertEqual(email_login.data['role'], 'client')
+        self.assertTrue(email_login.data['is_approved'])
+
+        self.client.logout()
+
+        # 3. Telefon + Telefon şifresi ile giriş
+        phone_login = self.client.post('/api/auth/login/', {
+            'username': '0555 987 65 43',  # Formatlı telefon
+            'password': '05559876543'
+        }, format='json')
+        self.assertEqual(phone_login.status_code, status.HTTP_200_OK)
+        self.assertEqual(phone_login.data['role'], 'client')
+
+
 
 

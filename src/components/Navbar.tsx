@@ -152,7 +152,7 @@ export function Navbar() {
                   <Link
                     to="/panel/psikolog"
                     onClick={() => setIsMenuOpen(false)}
-                    className="text-base font-semibold text-primary p-2 rounded-md bg-primary/10 flex items-center gap-2"
+                    className="text-base font-medium text-primary p-2 rounded-md bg-primary/10 flex items-center gap-2"
                   >
                     <LayoutDashboard size={18} /> Psikolog Paneli
                   </Link>
