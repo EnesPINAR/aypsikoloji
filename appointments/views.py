@@ -159,28 +159,34 @@ class LoginView(APIView):
     permission_classes = [permissions.AllowAny]
 
     def _login_user(self, request, user):
-        auth_login(request, user)
-        role = 'unknown'
-        client_data = None
-        is_approved = False
+        try:
+            auth_login(request, user)
+            role = 'unknown'
+            client_data = None
+            is_approved = False
 
-        if hasattr(user, 'psychologist_profile') or user.is_staff or user.is_superuser:
-            role = 'psychologist'
-            is_approved = True
-        elif hasattr(user, 'client_profile'):
-            role = 'client'
-            client_data = ClientProfileSerializer(user.client_profile).data
-            is_approved = user.client_profile.is_approved
-        else:
-            role = 'user'
+            if hasattr(user, 'psychologist_profile') or user.is_staff or user.is_superuser:
+                role = 'psychologist'
+                is_approved = True
+            elif hasattr(user, 'client_profile'):
+                role = 'client'
+                client_data = ClientProfileSerializer(user.client_profile, context={'request': request}).data
+                is_approved = user.client_profile.is_approved
+            else:
+                role = 'user'
 
-        return Response({
-            'message': 'Giriş başarılı.',
-            'user': UserSerializer(user).data,
-            'role': role,
-            'is_approved': is_approved,
-            'client_profile': client_data
-        }, status=status.HTTP_200_OK)
+            return Response({
+                'message': 'Giriş başarılı.',
+                'user': UserSerializer(user).data,
+                'role': role,
+                'is_approved': is_approved,
+                'client_profile': client_data
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            import traceback
+            traceback.print_exc()
+            return Response({'error': f'Giriş yapılamadı: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 
     def post(self, request):
         raw_identifier = request.data.get('username') or request.data.get('email') or request.data.get('phone') or ''

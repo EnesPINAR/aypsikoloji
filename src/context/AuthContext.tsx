@@ -93,9 +93,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         body: JSON.stringify({ username: identifier, password }),
       });
 
-      const data = await res.json();
+      let data: any = null;
+      try {
+        data = await res.json();
+      } catch (jsonErr) {
+        return { success: false, message: `Sunucu yanıt vermedi (${res.status}).` };
+      }
+
       if (!res.ok) {
-        return { success: false, message: data.error || "Giriş yapılamadı." };
+        return { success: false, message: data?.error || "Giriş yapılamadı." };
       }
 
       setUser(data.user);
@@ -103,10 +109,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsApproved(data.is_approved);
       setClientProfile(data.client_profile || null);
       return { success: true, message: data.message, role: data.role };
-    } catch (e) {
-      return { success: false, message: "Bağlantı hatası oluştu." };
+    } catch (e: any) {
+      return { success: false, message: e?.message || "Bağlantı hatası oluştu." };
     }
   };
+
 
   const register = async (data: { first_name: string; last_name: string; email: string; phone: string; password: string }) => {
     try {
