@@ -222,12 +222,42 @@ export function AppointmentPage() {
     );
   }
 
+  // 1.5. Durum: Psikolog yetkili hesabı ile randevu ekranına erişim engeli
+  if (role === "psychologist") {
+    return (
+      <main className="flex-grow container mx-auto px-4 py-12 flex items-center justify-center">
+        <Card className="max-w-lg w-full text-center p-6 border shadow-lg">
+          <CardHeader className="flex flex-col items-center">
+            <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center text-primary mb-3">
+              <CalendarDays size={36} />
+            </div>
+            <CardTitle className="text-2xl font-bold">Psikolog Yetkili Hesabı</CardTitle>
+            <CardDescription className="text-base mt-2">
+              Bu ekran danışanların randevu oluşturabilmesi içindir. Psikolog hesabı ile danışan randevusu alınamaz.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Randevu takviminizi görüntülemek, haftalık çalışma saatlerinizi düzenlemek ve danışan başvurularını yönetmek için Psikolog Paneli'ni kullanabilirsiniz.
+            </p>
+            <Button asChild className="w-full gap-2 mt-2">
+              <Link to="/panel/psikolog">
+                Psikolog Paneline Git
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </main>
+    );
+  }
+
   // 2. Durum: Kullanıcı kayıt olmuş ama henüz onaylanmamışsa (PENDING)
-  if (!isApproved && role !== "psychologist") {
+  if (!isApproved) {
     return (
       <main className="flex-grow container mx-auto px-4 py-12 flex items-center justify-center">
         <Card className="max-w-lg w-full text-center p-6 border-amber-500/30 shadow-lg">
           <CardHeader className="flex flex-col items-center">
+
             <div className="w-16 h-16 bg-amber-500/10 rounded-full flex items-center justify-center text-amber-600 dark:text-amber-400 mb-3 animate-pulse">
               <AlertCircle size={36} />
             </div>
@@ -269,32 +299,35 @@ export function AppointmentPage() {
         </div>
 
         {/* Tab Switcher */}
-        <div className="flex bg-muted p-1 rounded-lg shrink-0">
+        <div className="grid grid-cols-2 p-1 bg-muted/80 backdrop-blur-xs rounded-xl border border-border/50 w-full sm:w-[380px] shrink-0">
           <button
+            type="button"
             onClick={() => setActiveTab("book")}
-            className={`px-4 py-2 text-sm font-semibold rounded-md transition-all flex items-center gap-2 ${
+            className={`w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold rounded-lg transition-all cursor-pointer ${
               activeTab === "book"
                 ? "bg-background text-foreground shadow-xs"
-                : "text-muted-foreground hover:text-foreground"
+                : "text-muted-foreground hover:text-foreground hover:bg-background/40"
             }`}
           >
-            <CalendarIcon size={16} /> Yeni Randevu Al
+            <CalendarIcon size={16} /> <span>Yeni Randevu Al</span>
           </button>
           <button
+            type="button"
             onClick={() => {
               setActiveTab("my-appointments");
               fetchMyAppointments();
             }}
-            className={`px-4 py-2 text-sm font-semibold rounded-md transition-all flex items-center gap-2 ${
+            className={`w-full flex items-center justify-center gap-2 px-3 py-2 text-sm font-semibold rounded-lg transition-all cursor-pointer ${
               activeTab === "my-appointments"
                 ? "bg-background text-foreground shadow-xs"
-                : "text-muted-foreground hover:text-foreground"
+                : "text-muted-foreground hover:text-foreground hover:bg-background/40"
             }`}
           >
-            <History size={16} /> Randevularım ({myAppointments.length})
+            <History size={16} /> <span>Randevularım ({myAppointments.length})</span>
           </button>
         </div>
       </div>
+
 
       {/* ================= TAB 1: YENİ RANDEVU AL ================= */}
       {activeTab === "book" && (
@@ -305,7 +338,7 @@ export function AppointmentPage() {
                 <AlertCircle size={36} />
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-4">
                 <h2 className="text-2xl font-bold text-foreground">
                   Henüz Tamamlanmamış Aktif Bir Randevunuz Bulunuyor
                 </h2>
@@ -379,7 +412,7 @@ export function AppointmentPage() {
                   <CalendarIcon className="text-primary shrink-0" size={22} />
                   <h2 className="text-lg sm:text-xl font-bold text-foreground">1. Adım: Tarih Seçin</h2>
                 </div>
-                <div className="bg-card border rounded-xl p-4 inline-block shadow-xs">
+                <div className="bg-card border rounded-xl p-4 w-full flex justify-center sm:w-auto sm:inline-block shadow-xs">
                   <Calendar
                     mode="single"
                     selected={selectedDate}
@@ -390,114 +423,119 @@ export function AppointmentPage() {
                     className="rounded-md mx-auto"
                   />
                 </div>
+
+
               </section>
 
 
-          {/* Yükleniyor Uyarısı */}
-          {isLoading && (
-            <div className="text-center text-muted-foreground animate-pulse py-4 font-medium">
-              Psikoloğun müsait saatleri yükleniyor...
+              {/* Yükleniyor Uyarısı */}
+              {isLoading && (
+                <div className="text-center text-muted-foreground animate-pulse py-4 font-medium">
+                  Psikoloğun müsait saatleri yükleniyor...
+                </div>
+              )}
+
+              {/* 2. Adım: Müsait Saatler */}
+              {availableSlots.length > 0 && !isLoading && selectedDate && (
+                <section className="space-y-4 animate-in fade-in-50">
+                  <div className="flex items-start sm:items-center gap-2.5">
+                    <Clock className="text-primary shrink-0 mt-0.5 sm:mt-0" size={22} />
+                    <h2 className="text-lg sm:text-xl font-bold text-foreground leading-snug">
+                      2. Adım:{" "}
+                      <span className="text-primary font-bold">
+                        {selectedDate.toLocaleDateString("tr-TR", {
+                          day: "numeric",
+                          month: "long",
+                          weekday: "long",
+                        })}
+                      </span>{" "}
+                      için Seans Saati Seçin
+                    </h2>
+                  </div>
+                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
+
+                    {availableSlots.map((slot) => (
+                      <Button
+                        key={slot}
+                        variant={selectedSlot === slot ? "default" : "outline"}
+                        onClick={() => setSelectedSlot(slot)}
+                        className={`h-12 text-base font-semibold transition-all ${selectedSlot === slot ? "ring-2 ring-primary ring-offset-2" : ""
+                          }`}
+                      >
+                        {slot}
+                      </Button>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* 3. Adım: Onay ve Seans Notu */}
+              {selectedSlot && (
+                <section className="space-y-4 animate-in fade-in-50">
+                  <div className="flex items-center gap-2.5">
+                    <CheckCircle className="text-primary shrink-0" size={22} />
+                    <h2 className="text-lg sm:text-xl font-bold text-foreground">3. Adım: Randevuyu Onaylayın</h2>
+                  </div>
+                  <Card className="shadow-lg border">
+
+                    <CardHeader>
+                      <CardTitle>Randevu Özeti</CardTitle>
+                      <CardDescription className="text-base font-medium text-foreground">
+                        📅 Seçilen Tarih:{" "}
+                        <strong>
+                          {selectedDate?.toLocaleDateString("tr-TR", {
+                            day: "numeric",
+                            month: "long",
+                            year: "numeric",
+                            weekday: "long",
+                          })}
+                        </strong>{" "}
+                        - Saat: <strong className="text-primary">{selectedSlot}</strong>
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <form onSubmit={handleBookingSubmit} className="space-y-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-muted/40 p-4 rounded-lg">
+                          <div>
+                            <span className="text-xs text-muted-foreground">Danışan Adı Soyadı:</span>
+                            <p className="font-semibold text-foreground">
+                              {user.first_name} {user.last_name}
+                            </p>
+                          </div>
+                          <div>
+                            <span className="text-xs text-muted-foreground">İletişim Telefonu:</span>
+                            <p className="font-semibold text-foreground">
+                              {clientProfile?.phone || "-"}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          <Label htmlFor="client_notes" className="block text-sm font-medium">
+                            Psikoloğa İletmek İstediğiniz Not (Opsiyonel)
+                          </Label>
+                          <Input
+                            id="client_notes"
+                            placeholder="Örn: İlk görüşme konusu, online/yüz yüze tercihi vb."
+                            value={clientNotes}
+                            onChange={(e) => setClientNotes(e.target.value)}
+                          />
+                        </div>
+
+
+
+                        <Button type="submit" size="lg" className="w-full" disabled={isLoading}>
+                          {isLoading ? "İşleniyor..." : "Randevuyu Onayla ve Tamamla"}
+                        </Button>
+                      </form>
+                    </CardContent>
+                  </Card>
+                </section>
+              )}
             </div>
           )}
-
-          {/* 2. Adım: Müsait Saatler */}
-          {availableSlots.length > 0 && !isLoading && selectedDate && (
-            <section className="space-y-4 animate-in fade-in-50">
-              <div className="flex items-start sm:items-center gap-2.5">
-                <Clock className="text-primary shrink-0 mt-0.5 sm:mt-0" size={22} />
-                <h2 className="text-lg sm:text-xl font-bold text-foreground leading-snug">
-                  2. Adım:{" "}
-                  <span className="text-primary font-bold">
-                    {selectedDate.toLocaleDateString("tr-TR", {
-                      day: "numeric",
-                      month: "long",
-                      weekday: "long",
-                    })}
-                  </span>{" "}
-                  için Seans Saati Seçin
-                </h2>
-              </div>
-              <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
-
-                {availableSlots.map((slot) => (
-                  <Button
-                    key={slot}
-                    variant={selectedSlot === slot ? "default" : "outline"}
-                    onClick={() => setSelectedSlot(slot)}
-                    className={`h-12 text-base font-semibold transition-all ${
-                      selectedSlot === slot ? "ring-2 ring-primary ring-offset-2" : ""
-                    }`}
-                  >
-                    {slot}
-                  </Button>
-                ))}
-              </div>
-            </section>
-          )}
-
-          {/* 3. Adım: Onay ve Seans Notu */}
-          {selectedSlot && (
-            <section className="space-y-4 animate-in fade-in-50">
-              <div className="flex items-center gap-2.5">
-                <CheckCircle className="text-primary shrink-0" size={22} />
-                <h2 className="text-lg sm:text-xl font-bold text-foreground">3. Adım: Randevuyu Onaylayın</h2>
-              </div>
-              <Card className="shadow-lg border">
-
-                <CardHeader>
-                  <CardTitle>Randevu Özeti</CardTitle>
-                  <CardDescription className="text-base font-medium text-foreground">
-                    📅 Seçilen Tarih:{" "}
-                    <strong>
-                      {selectedDate?.toLocaleDateString("tr-TR", {
-                        day: "numeric",
-                        month: "long",
-                        year: "numeric",
-                        weekday: "long",
-                      })}
-                    </strong>{" "}
-                    - Saat: <strong className="text-primary">{selectedSlot}</strong>
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <form onSubmit={handleBookingSubmit} className="space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-muted/40 p-4 rounded-lg">
-                      <div>
-                        <span className="text-xs text-muted-foreground">Danışan Adı Soyadı:</span>
-                        <p className="font-semibold text-foreground">
-                          {user.first_name} {user.last_name}
-                        </p>
-                      </div>
-                      <div>
-                        <span className="text-xs text-muted-foreground">İletişim Telefonu:</span>
-                        <p className="font-semibold text-foreground">
-                          {clientProfile?.phone || "-"}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="client_notes">Psikoloğa İletmek İstediğiniz Not (Opsiyonel)</Label>
-                      <Input
-                        id="client_notes"
-                        placeholder="Örn: İlk görüşme konusu, online/yüz yüze tercihi vb."
-                        value={clientNotes}
-                        onChange={(e) => setClientNotes(e.target.value)}
-                      />
-                    </div>
-
-                    <Button type="submit" size="lg" className="w-full" disabled={isLoading}>
-                      {isLoading ? "İşleniyor..." : "Randevuyu Onayla ve Tamamla"}
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-            </section>
-          )}
-        </div>
+        </>
       )}
-    </>
-  )}
 
 
       {/* ================= TAB 2: RANDEVULARIM ================= */}
@@ -528,28 +566,31 @@ export function AppointmentPage() {
                   {myAppointments.map((app) => (
                     <div
                       key={app.id}
-                      className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-card hover:bg-muted/20 transition-colors"
+                      className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 bg-card hover:bg-muted/20 transition-colors"
                     >
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-3">
-                          <p className="font-bold text-foreground text-base">
-                            {new Date(app.date).toLocaleDateString("tr-TR", {
-                              day: "numeric",
-                              month: "long",
-                              year: "numeric",
-                              weekday: "short",
-                            })}
-                          </p>
-                          <span className="text-primary font-bold text-sm bg-primary/10 px-2 py-0.5 rounded">
-                            {app.time.slice(0, 5)}
-                          </span>
+                      <div className="space-y-1.5 flex-grow">
+                        <div className="flex items-center justify-between gap-2.5 w-full">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-bold text-foreground text-sm sm:text-base">
+                              {new Date(app.date).toLocaleDateString("tr-TR", {
+                                day: "numeric",
+                                month: "long",
+                                year: "numeric",
+                                weekday: "short",
+                              })}
+                            </p>
+                            <span className="text-primary font-bold text-xs sm:text-sm bg-primary/10 px-2 py-0.5 rounded font-mono">
+                              {app.time.slice(0, 5)}
+                            </span>
+                          </div>
+
                           <span
-                            className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                            className={`text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap shrink-0 ${
                               app.status === "COMPLETED"
-                                ? "bg-emerald-500/10 text-emerald-600"
+                                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
                                 : app.status === "CANCELLED"
-                                ? "bg-destructive/10 text-destructive line-through"
-                                : "bg-blue-500/10 text-blue-600"
+                                  ? "bg-rose-500/15 text-rose-600 dark:text-rose-400 border border-rose-500/20"
+                                  : "bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/20"
                             }`}
                           >
                             {app.status_display}
@@ -568,7 +609,7 @@ export function AppointmentPage() {
                           size="sm"
                           variant="destructive"
                           onClick={() => handleCancelMyAppointment(app.id)}
-                          className="shrink-0"
+                          className="w-full sm:w-auto shrink-0"
                         >
                           Randevuyu İptal Et
                         </Button>

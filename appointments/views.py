@@ -1,5 +1,7 @@
 import random
+import re
 from django.shortcuts import render
+
 from django.contrib.auth import authenticate, login as auth_login, logout as auth_logout, update_session_auth_hash
 from django.contrib.auth.models import User
 from django.utils import timezone
@@ -21,7 +23,8 @@ from .models import (
     DateOverride,
     Appointment,
     CancelledAppointmentLog,
-    EmailVerificationCode
+    EmailVerificationCode,
+    SiteContent
 )
 from .serializers import (
     UserSerializer,
@@ -35,8 +38,10 @@ from .serializers import (
     ClientCreateAppointmentSerializer,
     ClientProfileUpdateSerializer,
     SendVerificationCodeSerializer,
-    VerifyAndUpdateProfileSerializer
+    VerifyAndUpdateProfileSerializer,
+    SiteContentSerializer
 )
+
 
 
 
@@ -185,12 +190,14 @@ class LoginView(APIView):
         if not login_identifier or not password:
             return Response({'error': 'Lütfen kullanıcı adı / e-posta ve şifre giriniz.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # 1. E-posta ile dene (Büyük/küçük harf ve boşluk duyarsız)
-        user_by_email = User.objects.filter(email__iexact=login_identifier).first()
-        if user_by_email:
-            user = authenticate(request, username=user_by_email.username, password=password)
-            if user:
-                return self._login_user(request, user)
+        # 1. E-posta ile dene (Eğer @ içeriyorsa kullanıcı e-posta ile giriş yapıyordur; eski e-posta kalıntılarını engelle)
+        if '@' in login_identifier:
+            user_by_email = User.objects.filter(email__iexact=login_identifier).first()
+            if user_by_email:
+                user = authenticate(request, username=user_by_email.username, password=password)
+                if user:
+                    return self._login_user(request, user)
+            return Response({'error': 'Giriş bilgileri hatalı. Lütfen e-posta ve şifrenizi kontrol ediniz.'}, status=status.HTTP_401_UNAUTHORIZED)
 
         # 2. Telefon ile dene (Boşluksuz ve standart format)
         phone_cleaned = login_identifier.replace(" ", "").replace("-", "").replace("(", "").replace(")", "")
@@ -200,12 +207,13 @@ class LoginView(APIView):
             if user:
                 return self._login_user(request, user)
 
-        # 3. Doğrudan username ile dene
+        # 3. Doğrudan username ile dene (örn. psikolog)
         user = authenticate(request, username=login_identifier, password=password)
         if user:
             return self._login_user(request, user)
 
-        return Response({'error': 'Giriş bilgileri hatalı. Lütfen e-posta / telefon ve şifrenizi kontrol ediniz.'}, status=status.HTTP_401_UNAUTHORIZED)
+        return Response({'error': 'Giriş bilgileri hatalı. Lütfen bilgilerinizi kontrol ediniz.'}, status=status.HTTP_401_UNAUTHORIZED)
+
 
 
 
@@ -593,19 +601,29 @@ class ClientAppointmentViewSet(viewsets.ModelViewSet):
         if not psychologist:
             return Response({'error': 'Psikolog profili bulunamadı.'}, status=status.HTTP_400_BAD_REQUEST)
 
+        # Psikolog veya yetkili hesapların danışan randevusu almasını engelle
+        if hasattr(request.user, 'psychologist_profile') or request.user.is_staff or request.user.is_superuser:
+            return Response({
+                'error': 'Psikolog yetkili hesabı ile danışan randevusu alınamaz. Seansları yönetmek için lütfen Psikolog Paneli\'ni kullanınız.'
+            }, status=status.HTTP_403_FORBIDDEN)
+
         client_profile = getattr(request.user, 'client_profile', None)
+        if not client_profile or not client_profile.is_approved:
+            return Response({
+                'error': 'Yalnızca üyeliği onaylanmış danışanlar randevu alabilir.'
+            }, status=status.HTTP_403_FORBIDDEN)
 
         # 0. Danışanın henüz tamamlanmamış aktif bir randevusu var mı kontrolü
-        if client_profile:
-            active_appointment = Appointment.objects.filter(
-                client=client_profile,
-                status='BOOKED'
-            ).first()
-            if active_appointment:
-                return Response({
-                    'error': 'Zaten henüz tamamlanmamış aktif bir randevunuz bulunmaktadır. Yeni bir randevu alabilmek için mevcut randevunuzun tamamlanması veya iptal edilmesi gerekmektedir.',
-                    'active_appointment': AppointmentSerializer(active_appointment).data
-                }, status=status.HTTP_400_BAD_REQUEST)
+        active_appointment = Appointment.objects.filter(
+            client=client_profile,
+            status='BOOKED'
+        ).first()
+        if active_appointment:
+            return Response({
+                'error': 'Zaten henüz tamamlanmamış aktif bir randevunuz bulunmaktadır. Yeni bir randevu alabilmek için mevcut randevunuzun tamamlanması veya iptal edilmesi gerekmektedir.',
+                'active_appointment': AppointmentSerializer(active_appointment).data
+            }, status=status.HTTP_400_BAD_REQUEST)
+
 
         # 1. Çift rezervasyon kontrolü
         if Appointment.objects.filter(psychologist=psychologist, date=target_date, time=target_time, status='BOOKED').exists():
@@ -829,15 +847,25 @@ class ClientVerifyAndUpdateProfileView(APIView):
             if not phone_to_set:
                 return Response({'error': 'Yeni telefon numarası belirtilmedi.'}, status=status.HTTP_400_BAD_REQUEST)
 
-            if ClientProfile.objects.filter(phone=phone_to_set).exclude(user=user).exists():
+            cleaned_phone = re.sub(r'\D', '', phone_to_set)
+            if cleaned_phone.startswith('90') and len(cleaned_phone) == 12:
+                cleaned_phone = '0' + cleaned_phone[2:]
+            elif len(cleaned_phone) == 10 and cleaned_phone.startswith('5'):
+                cleaned_phone = '0' + cleaned_phone
+
+            if len(cleaned_phone) != 11 or not cleaned_phone.startswith('05'):
+                return Response({'error': 'Geçerli bir telefon numarası giriniz (Örn: 05XXXXXXXXX, 11 haneli olmalıdır).'}, status=status.HTTP_400_BAD_REQUEST)
+
+            if ClientProfile.objects.filter(phone=cleaned_phone).exclude(user=user).exists():
                 return Response({'error': 'Bu telefon numarası başka bir danışan tarafından kullanılıyor.'}, status=status.HTTP_400_BAD_REQUEST)
 
             client_profile = getattr(user, 'client_profile', None)
             if client_profile:
-                client_profile.phone = phone_to_set
+                client_profile.phone = cleaned_phone
                 client_profile.save(update_fields=['phone'])
 
             msg = 'Telefon numaranız başarıyla güncellendi.'
+
 
         # 2. E-posta Adresi Güncelleme
         elif purpose == 'CHANGE_EMAIL':
@@ -848,9 +876,18 @@ class ClientVerifyAndUpdateProfileView(APIView):
             if User.objects.filter(email__iexact=email_to_set).exclude(pk=user.pk).exists():
                 return Response({'error': 'Bu e-posta adresi ile kayıtlı başka bir hesap bulunmaktadır.'}, status=status.HTTP_400_BAD_REQUEST)
 
+            old_email = user.email.lower() if user.email else ""
             user.email = email_to_set
-            user.save(update_fields=['email'])
+
+            # Eğer kullanıcının username'i eski e-posta formatındaysa ve yeni e-posta başka bir username ile çakışmıyorsa, username'i de güncelle
+            update_fields = ['email']
+            if (user.username.lower() == old_email or '@' in user.username) and not User.objects.filter(username__iexact=email_to_set).exclude(pk=user.pk).exists():
+                user.username = email_to_set
+                update_fields.append('username')
+
+            user.save(update_fields=update_fields)
             msg = 'E-posta adresiniz başarıyla güncellendi.'
+
 
         # 3. Şifre Güncelleme
         elif purpose == 'CHANGE_PASSWORD':
@@ -887,5 +924,35 @@ class ClientVerifyAndUpdateProfileView(APIView):
                 'phone': client_profile.phone if client_profile else ''
             }
         }, status=status.HTTP_200_OK)
+
+
+class SiteContentView(APIView):
+    """ Hakkımda ve İletişim sayfaları içeriklerini okuma (herkes) ve güncelleme (psikolog) """
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [permissions.AllowAny()]
+        return [permissions.IsAuthenticated()]
+
+    def get(self, request):
+        site_content = SiteContent.load()
+        serializer = SiteContentSerializer(site_content)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def put(self, request):
+        # Sadece psikolog veya yetkili personel güncelleyebilir
+        user = request.user
+        if not (hasattr(user, 'psychologist_profile') or user.is_staff or user.is_superuser):
+            return Response({'error': 'Bu işlem için yetkiniz bulunmamaktadır.'}, status=status.HTTP_403_FORBIDDEN)
+
+        site_content = SiteContent.load()
+        serializer = SiteContentSerializer(site_content, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response({
+                'message': 'Sayfa içerikleri başarıyla güncellendi.',
+                'site_content': serializer.data
+            }, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
 
 

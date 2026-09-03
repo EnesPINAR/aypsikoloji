@@ -381,6 +381,128 @@ class AppointmentSystemTests(TestCase):
         self.assertEqual(phone_login.status_code, status.HTTP_200_OK)
         self.assertEqual(phone_login.data['role'], 'client')
 
+    def test_site_content_get_public(self):
+        """ Herkes (giriş yapmamış kullanıcı dahil) site içeriklerini görebilmelidir """
+        self.client.logout()
+        res = self.client.get('/api/site-content/')
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertIn('full_name', res.data)
+        self.assertIn('title', res.data)
+        self.assertIn('about_text', res.data)
+        self.assertIn('contact_email', res.data)
+
+    def test_site_content_update_by_psychologist(self):
+        """ Psikolog site içeriklerini güncelleyebilmelidir """
+        self.client.force_authenticate(user=self.psych_user)
+        update_data = {
+            'full_name': 'Uzm. Psk. Aybike Yaren Topcuoğlu',
+            'title': 'Klinik Psikolog & Aile Danışmanı',
+            'contact_email': 'yeni.iletisim@gmail.com',
+            'contact_phone': '05321112233',
+            'address': 'Kadıköy, İstanbul',
+            'instagram_url': 'https://instagram.com/yarenpsk',
+            'linkedin_url': 'https://linkedin.com/in/yarentopcuoglu',
+            'about_text': 'Yeni güncellenmiş biyografi metni.'
+        }
+        res = self.client.put('/api/site-content/', update_data, format='json')
+        self.assertEqual(res.status_code, status.HTTP_200_OK)
+        self.assertEqual(res.data['site_content']['full_name'], 'Uzm. Psk. Aybike Yaren Topcuoğlu')
+        self.assertEqual(res.data['site_content']['contact_email'], 'yeni.iletisim@gmail.com')
+
+    def test_site_content_update_by_client_forbidden(self):
+        """ Normal bir danışan site içeriklerini güncelleyememelidir (403) """
+        self.client.force_authenticate(user=self.approved_client_user)
+        res = self.client.put('/api/site-content/', {'full_name': 'Hacker'}, format='json')
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_psychologist_cannot_create_client_appointment(self):
+        """ Psikolog hesabı /api/client/appointments/ üzerinden danışan randevusu alamaz (403) """
+        self.client.force_authenticate(user=self.psych_user)
+        target_date = (timezone.now().date() + timedelta(days=1)).strftime('%Y-%m-%d')
+        res = self.client.post('/api/client/appointments/', {
+            'date': target_date,
+            'time': '10:00',
+            'client_notes': 'Kendi kendime randevu'
+        }, format='json')
+        self.assertEqual(res.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_change_email_disables_login_with_old_email(self):
+        """ E-posta değiştirildiğinde eski e-posta ile giriş yapılamamalı, sadece yeni e-posta çalışmalıdır """
+        # 1. approved_client_user e-postası: testclient@test.com
+        user = self.approved_client_user
+        old_email = user.email
+
+        # 2. Doğrulama kodu oluştur
+        from appointments.models import EmailVerificationCode
+        code_obj = EmailVerificationCode.objects.create(
+            user=user,
+            code='123456',
+            purpose='CHANGE_EMAIL',
+            new_value='yenidanisan@test.com',
+            expires_at=timezone.now() + timedelta(minutes=10)
+        )
+
+        # 3. Kodu doğrula ve e-postayı güncelle
+        self.client.force_authenticate(user=user)
+        update_res = self.client.post('/api/client/profile/verify-and-update/', {
+            'purpose': 'CHANGE_EMAIL',
+            'code': '123456',
+            'new_value': 'yenidanisan@test.com'
+        }, format='json')
+        self.assertEqual(update_res.status_code, status.HTTP_200_OK)
+
+        self.client.logout()
+
+        # 4. Eski e-posta ile giriş dene -> 401 HATA dönmeli
+        old_login = self.client.post('/api/auth/login/', {
+            'username': old_email,
+            'password': 'ClientPassword123!'
+        }, format='json')
+        self.assertEqual(old_login.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        # 5. Yeni e-posta ile giriş dene -> 200 BAŞARILI dönmeli
+        new_login = self.client.post('/api/auth/login/', {
+            'username': 'yenidanisan@test.com',
+            'password': 'ClientPassword123!'
+        }, format='json')
+        self.assertEqual(new_login.status_code, status.HTTP_200_OK)
+
+    def test_phone_number_length_validation(self):
+        """ Telefon numarası çok uzun veya geçersiz olduğunda reddedilmelidir """
+        self.client.force_authenticate(user=self.psych_user)
+
+        # 1. Aşırı uzun telefon numarası (sonsuz numara)
+        res_too_long = self.client.post('/api/psychologist/clients/', {
+            'first_name': 'Ali',
+            'last_name': 'Veli',
+            'phone': '055512345678901234567890',
+            'email': 'ali@test.com'
+        }, format='json')
+        self.assertEqual(res_too_long.status_code, status.HTTP_400_BAD_REQUEST)
+
+        # 2. Çok kısa telefon numarası
+        res_too_short = self.client.post('/api/psychologist/clients/', {
+            'first_name': 'Ali',
+            'last_name': 'Veli',
+            'phone': '0555',
+            'email': 'ali2@test.com'
+        }, format='json')
+        self.assertEqual(res_too_short.status_code, status.HTTP_400_BAD_REQUEST)
+
+        # 3. Geçerli 11 haneli telefon numarası kabul edilmeli
+        res_valid = self.client.post('/api/psychologist/clients/', {
+            'first_name': 'Ali',
+            'last_name': 'Veli',
+            'phone': '05551234599',
+            'email': 'ali3@test.com'
+        }, format='json')
+        self.assertEqual(res_valid.status_code, status.HTTP_201_CREATED)
+
+
+
+
+
+
 
 
 

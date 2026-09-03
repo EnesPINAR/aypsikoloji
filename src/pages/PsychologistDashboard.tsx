@@ -18,11 +18,18 @@ import {
   CalendarDays,
   RotateCcw,
   ListFilter,
+  Upload,
+  Trash2,
+  Instagram,
+  Linkedin,
+  MapPin,
 } from "lucide-react";
+import profilePic from "@/assets/pp.webp";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
@@ -42,7 +49,7 @@ export function PsychologistDashboard() {
   const { user, role, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
 
-  const [activeTab, setActiveTab] = useState<"schedule" | "calendar" | "clients">("schedule");
+  const [activeTab, setActiveTab] = useState<"schedule" | "calendar" | "clients" | "content">("schedule");
   const [loading, setLoading] = useState(false);
 
   // --- 1. Haftalık Planlama State ---
@@ -73,6 +80,22 @@ export function PsychologistDashboard() {
     password: "",
     notes: "",
   });
+
+  // --- 4. Sayfa İçerikleri (Hakkımda & İletişim) State ---
+  const [siteContent, setSiteContent] = useState({
+    full_name: "",
+    title: "",
+    profile_image: "",
+    about_text: "",
+    contact_email: "",
+    contact_phone: "",
+    address: "",
+    instagram_url: "",
+    linkedin_url: "",
+  });
+  const [contentLoading, setContentLoading] = useState(false);
+  const [contentSaving, setContentSaving] = useState(false);
+
 
 
   // Auth protection check
@@ -420,6 +443,78 @@ export function PsychologistDashboard() {
     }
   };
 
+  // --- 4. SAYFA İÇERİKLERİ (HAKKIMDA & İLETİŞİM) İŞLEMLERİ ---
+  const fetchSiteContent = async () => {
+    setContentLoading(true);
+    try {
+      const res = await fetch("/api/site-content/");
+      if (res.ok) {
+        const data = await res.json();
+        setSiteContent({
+          full_name: data.full_name || "",
+          title: data.title || "",
+          profile_image: data.profile_image || "",
+          about_text: data.about_text || "",
+          contact_email: data.contact_email || "",
+          contact_phone: data.contact_phone || "",
+          address: data.address || "",
+          instagram_url: data.instagram_url || "",
+          linkedin_url: data.linkedin_url || "",
+        });
+      }
+    } catch (e) {
+      console.error("fetchSiteContent error:", e);
+    } finally {
+      setContentLoading(false);
+    }
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("Görsel boyutu en fazla 2 MB olmalıdır.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setSiteContent((prev) => ({ ...prev, profile_image: reader.result as string }));
+      toast.success("Profil görseli yüklendi. Değişiklikleri kaydetmeyi unutmayınız.");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveSiteContent = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setContentSaving(true);
+    try {
+      const res = await fetch("/api/site-content/", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRFToken": getCsrfToken(),
+        },
+        credentials: "include",
+        body: JSON.stringify(siteContent),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        toast.success("Hakkımda ve İletişim sayfası içerikleri başarıyla güncellendi!");
+      } else {
+        const errorMsg = Object.values(data).flat().join(" ") || "Kaydedilirken bir hata oluştu.";
+        toast.error(errorMsg);
+      }
+    } catch (e) {
+      toast.error("Bağlantı hatası.");
+    } finally {
+      setContentSaving(false);
+    }
+  };
+
+
   const todayStr = formatDateToYMD(new Date());
 
   return (
@@ -453,16 +548,17 @@ export function PsychologistDashboard() {
       </div>
 
       {/* Navigation Tabs */}
-      <div className="flex border-b mb-6 gap-2">
+      <div className="flex border-b mb-6 gap-1 sm:gap-2 overflow-x-auto no-scrollbar scroll-smooth w-full">
         <button
           onClick={() => setActiveTab("schedule")}
-          className={`pb-3 px-4 font-semibold text-sm transition-all border-b-2 flex items-center gap-2 ${
+          className={`pb-3 px-3 sm:px-4 font-semibold text-sm transition-all border-b-2 flex items-center gap-2 shrink-0 whitespace-nowrap ${
             activeTab === "schedule"
               ? "border-primary text-primary"
               : "border-transparent text-muted-foreground hover:text-foreground"
           }`}
         >
-          <Clock size={16} /> Hafta Programlama & İzinler
+          <Clock size={16} className="shrink-0" />
+          <span>Hafta Programı<span className="hidden sm:inline"> & İzinler</span></span>
         </button>
         <button
           onClick={() => {
@@ -470,61 +566,83 @@ export function PsychologistDashboard() {
             fetchCalendarOverview(currentWeekOffset);
             fetchAllAppointments();
           }}
-          className={`pb-3 px-4 font-semibold text-sm transition-all border-b-2 flex items-center gap-2 ${
+          className={`pb-3 px-3 sm:px-4 font-semibold text-sm transition-all border-b-2 flex items-center gap-2 shrink-0 whitespace-nowrap ${
             activeTab === "calendar"
               ? "border-primary text-primary"
               : "border-transparent text-muted-foreground hover:text-foreground"
           }`}
         >
-          <CalendarIcon size={16} /> Randevu Takvimi & Seanslar ({allAppointments.filter(a => a.status === 'BOOKED').length} Aktif)
+          <CalendarIcon size={16} className="shrink-0" />
+          <span>
+            <span className="sm:hidden">Takvim & Seanslar</span>
+            <span className="hidden sm:inline">Randevu Takvimi & Seanslar</span>{" "}
+            ({allAppointments.filter(a => a.status === 'BOOKED').length} Aktif)
+          </span>
         </button>
         <button
           onClick={() => {
             setActiveTab("clients");
             fetchClients();
           }}
-          className={`pb-3 px-4 font-semibold text-sm transition-all border-b-2 flex items-center gap-2 relative ${
+          className={`pb-3 px-3 sm:px-4 font-semibold text-sm transition-all border-b-2 flex items-center gap-2 relative shrink-0 whitespace-nowrap ${
             activeTab === "clients"
               ? "border-primary text-primary"
               : "border-transparent text-muted-foreground hover:text-foreground"
           }`}
         >
-          <Users size={16} /> Danışanlar & Onaylar
+          <Users size={16} className="shrink-0" />
+          <span>Danışanlar<span className="hidden sm:inline"> & Onaylar</span></span>
           {pendingClients.length > 0 && (
             <span className="bg-amber-500 text-white text-xs px-1.5 py-0.5 rounded-full font-bold">
               {pendingClients.length}
             </span>
           )}
         </button>
+        <button
+          onClick={() => {
+            setActiveTab("content");
+            fetchSiteContent();
+          }}
+          className={`pb-3 px-3 sm:px-4 font-semibold text-sm transition-all border-b-2 flex items-center gap-2 shrink-0 whitespace-nowrap ${
+            activeTab === "content"
+              ? "border-primary text-primary"
+              : "border-transparent text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <FileText size={16} className="shrink-0" />
+          <span>Sayfa İçerikleri<span className="hidden sm:inline"> (Hakkımda & İletişim)</span></span>
+        </button>
       </div>
+
+
 
       {/* ================= TAB 1: HAFTA PROGRAMLAMA ================= */}
       {activeTab === "schedule" && (
         <div className="space-y-8">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <CardTitle className="text-xl font-bold">Haftalık Sabit Çalışma Şablonu</CardTitle>
                 <CardDescription>
                   Haftanın her günü için seans kabul edip etmediğinizi ve çalışma saatlerinizi belirleyin. Değişiklik yaptıktan sonra <strong>"Planı Kaydet"</strong> butonuna basınız.
                 </CardDescription>
               </div>
-              <Button onClick={handleSaveWeeklySchedule} disabled={loading} className="gap-2">
+              <Button onClick={handleSaveWeeklySchedule} disabled={loading} className="gap-2 shrink-0 w-full sm:w-auto">
                 <Save size={16} /> {loading ? "Kaydediliyor..." : "Planı Kaydet"}
               </Button>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-3 sm:p-6">
               <div className="divide-y border rounded-lg">
                 {weeklySchedules.map((schedule, idx) => {
                   const dayName = DAYS_OF_WEEK.find((d) => d.id === schedule.day_of_week)?.label;
                   return (
                     <div
                       key={schedule.day_of_week}
-                      className={`p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 transition-colors ${
+                      className={`p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 transition-colors ${
                         schedule.is_active ? "bg-card" : "bg-muted/40 opacity-75"
                       }`}
                     >
-                      <div className="flex items-center gap-4 min-w-40">
+                      <div className="flex items-center gap-3 min-w-36">
                         <input
                           type="checkbox"
                           id={`day_active_${schedule.day_of_week}`}
@@ -532,7 +650,7 @@ export function PsychologistDashboard() {
                           onChange={(e) =>
                             handleScheduleDayChange(idx, "is_active", e.target.checked)
                           }
-                          className="w-5 h-5 accent-primary rounded cursor-pointer"
+                          className="w-5 h-5 accent-primary rounded cursor-pointer shrink-0"
                         />
                         <Label
                           htmlFor={`day_active_${schedule.day_of_week}`}
@@ -543,8 +661,8 @@ export function PsychologistDashboard() {
                       </div>
 
                       {schedule.is_active ? (
-                        <div className="flex items-center gap-3">
-                          <div className="flex items-center gap-2">
+                        <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:gap-3 w-full sm:w-auto">
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
                             <span className="text-xs text-muted-foreground font-medium">Başlangıç:</span>
                             <Input
                               type="time"
@@ -552,11 +670,10 @@ export function PsychologistDashboard() {
                               onChange={(e) =>
                                 handleScheduleDayChange(idx, "start_time", e.target.value)
                               }
-                              className="w-28 font-mono text-center"
+                              className="w-full sm:w-28 font-mono text-center"
                             />
                           </div>
-                          <span className="text-muted-foreground font-bold">-</span>
-                          <div className="flex items-center gap-2">
+                          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
                             <span className="text-xs text-muted-foreground font-medium">Bitiş:</span>
                             <Input
                               type="time"
@@ -564,12 +681,12 @@ export function PsychologistDashboard() {
                               onChange={(e) =>
                                 handleScheduleDayChange(idx, "end_time", e.target.value)
                               }
-                              className="w-28 font-mono text-center"
+                              className="w-full sm:w-28 font-mono text-center"
                             />
                           </div>
                         </div>
                       ) : (
-                        <span className="text-sm font-semibold text-muted-foreground italic">
+                        <span className="text-sm font-semibold text-muted-foreground italic pl-8 sm:pl-0">
                           Bu gün kapalı (Seans kabul edilmiyor)
                         </span>
                       )}
@@ -579,6 +696,7 @@ export function PsychologistDashboard() {
               </div>
             </CardContent>
           </Card>
+
 
           {/* Özel Günler & İzinler */}
           <Card>
@@ -1080,7 +1198,215 @@ export function PsychologistDashboard() {
         </div>
       )}
 
+      {/* ================= TAB 4: SAYFA İÇERİKLERİ (HAKKIMDA & İLETİŞİM) ================= */}
+      {activeTab === "content" && (
+        <form onSubmit={handleSaveSiteContent} className="space-y-8 animate-in fade-in-50">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            {/* 1. HAKKIMDA BÖLÜMÜ */}
+            <Card className="shadow-xs">
+              <CardHeader>
+                <CardTitle className="text-xl flex items-center gap-2">
+                  <FileText className="text-primary" size={20} />
+                  Hakkımda Sayfası Bilgileri
+                </CardTitle>
+                <CardDescription>
+                  Hakkımda sayfasında görünen isim, unvan, profil fotoğrafı ve biyografi metnini düzenleyin.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="sc_full_name">Ad Soyad</Label>
+                    <Input
+                      id="sc_full_name"
+                      required
+                      placeholder="Örn: Aybike Yaren Topcuoğlu"
+                      value={siteContent.full_name}
+                      onChange={(e) => setSiteContent({ ...siteContent, full_name: e.target.value })}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="sc_title">Mesleki Unvan</Label>
+                    <Input
+                      id="sc_title"
+                      required
+                      placeholder="Örn: Psikolog ve Aile Danışmanı"
+                      value={siteContent.title}
+                      onChange={(e) => setSiteContent({ ...siteContent, title: e.target.value })}
+                    />
+                  </div>
+                </div>
+
+                {/* Profil Fotoğrafı Yükleme & Önizleme */}
+                <div className="space-y-2 pt-2 border-t">
+                  <Label>Profil Fotoğrafı</Label>
+                  <div className="flex items-center gap-4">
+                    <img
+                      src={siteContent.profile_image || profilePic}
+                      alt="Profil Önizleme"
+                      className="w-20 h-20 rounded-full object-cover border-2 border-border shadow-xs shrink-0"
+                    />
+                    <div className="space-y-2 flex-1">
+                      <div className="flex items-center gap-2">
+                        <label
+                          htmlFor="sc_profile_image_input"
+                          className="cursor-pointer inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md bg-secondary text-secondary-foreground hover:bg-secondary/80 transition-colors"
+                        >
+                          <Upload size={14} /> Yeni Fotoğraf Yükle
+                        </label>
+                        <input
+                          id="sc_profile_image_input"
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          onChange={handleImageUpload}
+                        />
+
+                        {siteContent.profile_image && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setSiteContent({ ...siteContent, profile_image: "" })}
+                            className="text-destructive hover:bg-destructive/10 text-xs h-7 px-2 cursor-pointer"
+                          >
+                            <Trash2 size={14} className="mr-1" /> Varsayılana Dön
+                          </Button>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">
+                        PNG, JPG veya WEBP formatında en fazla 2 MB boyutunda görsel yükleyebilirsiniz.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Biyografi / Tanıtım Metni */}
+                <div className="space-y-1.5 pt-2 border-t">
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="sc_about_text">Biyografi & Tanıtım Metni</Label>
+                    <span className="text-[11px] text-muted-foreground">Paragraflar için Enter ile satır atlayınız</span>
+                  </div>
+                  <textarea
+                    id="sc_about_text"
+                    rows={12}
+                    placeholder="Kendinizi, çalışma alanlarınızı ve yaklaşımınızı anlatan tanıtım metni..."
+                    value={siteContent.about_text}
+                    onChange={(e) => setSiteContent({ ...siteContent, about_text: e.target.value })}
+                    className="w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary leading-relaxed resize-y font-sans"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* 2. İLETİŞİM BÖLÜMÜ */}
+            <Card className="shadow-xs">
+              <CardHeader>
+                <CardTitle className="text-xl flex items-center gap-2">
+                  <Phone className="text-primary" size={20} />
+                  İletişim Sayfası Bilgileri
+                </CardTitle>
+                <CardDescription>
+                  İletişim sayfasında ziyaretçilerin göreceği iletişim kanallarını ve sosyal medya linklerini belirleyin.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="sc_email" className="flex items-center gap-1.5">
+                    <Mail size={14} className="text-primary" /> İletişim E-posta Adresi
+                  </Label>
+                  <Input
+                    id="sc_email"
+                    type="email"
+                    required
+                    placeholder="danisan@aypsikoloji.com"
+                    value={siteContent.contact_email}
+                    onChange={(e) => setSiteContent({ ...siteContent, contact_email: e.target.value })}
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="sc_phone" className="flex items-center gap-1.5">
+                    <Phone size={14} className="text-primary" /> İletişim Telefon Numarası
+                  </Label>
+                  <Input
+                    id="sc_phone"
+                    type="tel"
+                    maxLength={15}
+                    placeholder="05XXXXXXXXX"
+                    value={siteContent.contact_phone}
+                    onChange={(e) => {
+                      const sanitized = e.target.value.replace(/[^\d\s+()\-]/g, "").slice(0, 15);
+                      setSiteContent({ ...siteContent, contact_phone: sanitized });
+                    }}
+                  />
+                </div>
+
+
+                <div className="space-y-1.5">
+                  <Label htmlFor="sc_address" className="flex items-center gap-1.5">
+                    <MapPin size={14} className="text-primary" /> Ofis / Klinik Adresi (Opsiyonel)
+                  </Label>
+                  <Input
+                    id="sc_address"
+                    placeholder="Örn: Bağdat Caddesi No:123 Kadıköy / İstanbul"
+                    value={siteContent.address}
+                    onChange={(e) => setSiteContent({ ...siteContent, address: e.target.value })}
+                  />
+                </div>
+
+                <div className="pt-2 border-t space-y-3">
+                  <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">
+                    Sosyal Medya Bağlantıları
+                  </Label>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="sc_instagram" className="flex items-center gap-1.5">
+                      <Instagram size={14} className="text-pink-500" /> Instagram Profil Linki
+                    </Label>
+                    <Input
+                      id="sc_instagram"
+                      type="url"
+                      placeholder="https://www.instagram.com/kullaniciadi"
+                      value={siteContent.instagram_url}
+                      onChange={(e) => setSiteContent({ ...siteContent, instagram_url: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label htmlFor="sc_linkedin" className="flex items-center gap-1.5">
+                      <Linkedin size={14} className="text-blue-500" /> LinkedIn Profil Linki (Opsiyonel)
+                    </Label>
+                    <Input
+                      id="sc_linkedin"
+                      type="url"
+                      placeholder="https://www.linkedin.com/in/kullaniciadi"
+                      value={siteContent.linkedin_url}
+                      onChange={(e) => setSiteContent({ ...siteContent, linkedin_url: e.target.value })}
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Kaydetme Butonu */}
+          <div className="flex items-center justify-end gap-3 pt-4 border-t">
+            <Button
+              type="submit"
+              size="lg"
+              disabled={contentSaving}
+              className="gap-2 px-6 font-semibold cursor-pointer"
+            >
+              <Save size={18} />
+              {contentSaving ? "Kaydediliyor..." : "Tüm Değişiklikleri Kaydet"}
+            </Button>
+          </div>
+        </form>
+      )}
+
       {/* Manuel Danışan Ekle Modal */}
+
       {showAddClientModal && (
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-background border rounded-xl shadow-2xl max-w-md w-full p-6 animate-in fade-in-50 zoom-in-95">
@@ -1125,18 +1451,24 @@ export function PsychologistDashboard() {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="man_phone">Telefon Numarası</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="man_phone">Telefon Numarası</Label>
+                  <span className="text-[11px] text-muted-foreground font-mono">{newClientData.phone.length}/11</span>
+                </div>
                 <Input
                   id="man_phone"
                   type="tel"
                   required
+                  maxLength={11}
                   placeholder="05XXXXXXXXX"
                   value={newClientData.phone}
-                  onChange={(e) =>
-                    setNewClientData({ ...newClientData, phone: e.target.value })
-                  }
+                  onChange={(e) => {
+                    const onlyNums = e.target.value.replace(/\D/g, "").slice(0, 11);
+                    setNewClientData({ ...newClientData, phone: onlyNums });
+                  }}
                 />
               </div>
+
 
               <div className="space-y-1.5">
                 <Label htmlFor="man_email">E-posta</Label>

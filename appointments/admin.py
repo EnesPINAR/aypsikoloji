@@ -6,8 +6,10 @@ from .models import (
     DateOverride,
     Appointment,
     CancelledAppointmentLog,
-    EmailVerificationCode
+    EmailVerificationCode,
+    SiteContent
 )
+
 
 
 @admin.register(Psychologist)
@@ -73,5 +75,11 @@ class EmailVerificationCodeAdmin(admin.ModelAdmin):
     list_display = ['user', 'purpose', 'code', 'new_value', 'created_at', 'expires_at', 'is_used']
     list_filter = ['purpose', 'is_used', 'created_at']
     search_fields = ['user__username', 'user__email', 'code', 'new_value']
+
+
+@admin.register(SiteContent)
+class SiteContentAdmin(admin.ModelAdmin):
+    list_display = ['full_name', 'title', 'contact_email', 'contact_phone', 'updated_at']
+
 
 

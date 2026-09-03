@@ -188,3 +188,58 @@ class EmailVerificationCode(models.Model):
     def __str__(self):
         return f"{self.user.username} - {self.get_purpose_display()} ({self.code})"
 
+
+class SiteContent(models.Model):
+    """ Hakkımda ve İletişim sayfaları dinamik içerik modeli (Singleton) """
+    DEFAULT_ABOUT_TEXT = (
+        "Ben Aybike Yaren Topcuoğlu, Psikolog ve Aile Danışmanıyım. Lisans eğitimimi Sakarya Üniversitesi Psikoloji "
+        "Bölümü’nde yüksek onur derecesi ile tamamladım. Şu anda Haliç Üniversitesi Tezli Psikoloji Yüksek Lisans "
+        "Programı’nda uzmanlık eğitimime devam etmekteyim. Akademik hayatım boyunca araştırma projeleri, makale ve "
+        "kitap çalışmaları içerisinde yer aldım; aynı zamanda birçok eğitim ve seminer vererek mesleki deneyimimi zenginleştirdim.\n\n"
+        "Mesleki pratiğimde hem yetişkinlerle hem de çocuklarla çalışıyorum. Yetişkin danışanlarla özellikle duygudurum "
+        "bozuklukları, kaygı (anksiyete) bozuklukları, obsesif kompulsif bozukluk, öfke kontrol güçlükleri, somatik "
+        "bozukluklar, yeme bozuklukları üzerine yoğunlaşıyorum. Ayrıca aile ve ebeveyn danışmanlığı alanında da aktif olarak çalışmaktayım.\n\n"
+        "Terapötik yaklaşımımda tek bir yönteme bağlı kalmaktan ziyade danışanın ihtiyacına göre farklı ekolleri bir "
+        "araya getirmeyi önemsiyorum. Dinamik ve derinlemesine bakış açısını şefkatli bir şekilde harmanlarken, "
+        "yapılandırılmış teknikleri de sürecin içine katıyorum. Böylece hem iç dünyadaki kök nedenlere dokunabilmeyi "
+        "hem de gündelik yaşamda işlevselliği artırmayı hedefliyorum.\n\n"
+        "Bugüne kadar iki anaokulunda kurum psikoloğu olarak görev aldım, atölye çalışmaları düzenledim ve çocuk, ergen, "
+        "yetişkin danışanlarla klinik deneyim kazandım. Aynı zamanda topluluk çalışmalarım, deprem sonrası psikososyal "
+        "destek faaliyetlerim ve hastane okulu projelerim bana çok yönlü bir saha deneyimi kattı.\n\n"
+        "Mesleğe bakışımda en çok önem verdiğim şey; insanın içsel yolculuğunda yanında güvenle eşlik edebilmek. "
+        "Her bireyin kendi hikâyesiyle değerli olduğuna inanıyor ve bu yolculukta bilimsel, etik ve insancıl bir yaklaşımı rehber ediniyorum."
+    )
+
+    full_name = models.CharField(max_length=150, default="Aybike Yaren Topcuoğlu", verbose_name="Ad Soyad")
+    title = models.CharField(max_length=150, default="Psikolog ve Aile Danışmanı", verbose_name="Unvan")
+    profile_image = models.TextField(blank=True, default="", verbose_name="Profil Fotoğrafı (Base64 veya URL)")
+    
+    # Hakkımda
+    about_text = models.TextField(default=DEFAULT_ABOUT_TEXT, verbose_name="Hakkımda Metni")
+    
+    # İletişim
+    contact_email = models.EmailField(default="psikologaybikeyaren@gmail.com", verbose_name="İletişim E-postası")
+    contact_phone = models.CharField(max_length=50, blank=True, default="", verbose_name="İletişim Telefonu")
+    address = models.CharField(max_length=255, blank=True, default="", verbose_name="Adres")
+    instagram_url = models.URLField(blank=True, default="https://www.instagram.com/psikologaybiketopcuoglu", verbose_name="Instagram Linki")
+    linkedin_url = models.URLField(blank=True, default="", verbose_name="LinkedIn Linki")
+    
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Son Güncelleme")
+
+    def save(self, *args, **kwargs):
+        self.pk = 1
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def load(cls):
+        obj, created = cls.objects.get_or_create(pk=1)
+        return obj
+
+    class Meta:
+        verbose_name = "Sayfa İçerikleri (Hakkımda & İletişim)"
+        verbose_name_plural = "Sayfa İçerikleri"
+
+    def __str__(self):
+        return f"Sayfa İçerikleri ({self.full_name})"
+
+

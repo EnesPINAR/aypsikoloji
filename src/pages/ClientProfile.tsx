@@ -485,14 +485,23 @@ export function ClientProfilePage() {
             {!phoneCodeSent ? (
               <div className="space-y-3">
                 <div className="space-y-1.5">
-                  <Label htmlFor="new_phone">Yeni Telefon Numarası</Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="new_phone">Yeni Telefon Numarası</Label>
+                    <span className="text-[11px] text-muted-foreground font-mono">{newPhone.length}/11</span>
+                  </div>
                   <Input
                     id="new_phone"
+                    type="tel"
+                    maxLength={11}
                     placeholder="05XXXXXXXXX"
                     value={newPhone}
-                    onChange={(e) => setNewPhone(e.target.value)}
+                    onChange={(e) => {
+                      const onlyNums = e.target.value.replace(/\D/g, "").slice(0, 11);
+                      setNewPhone(onlyNums);
+                    }}
                   />
                 </div>
+
                 <Button
                   type="button"
                   variant="secondary"

@@ -1,3 +1,4 @@
+import re
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from .models import (
@@ -6,8 +7,26 @@ from .models import (
     WeeklySchedule,
     DateOverride,
     Appointment,
-    CancelledAppointmentLog
+    CancelledAppointmentLog,
+    SiteContent
 )
+
+
+def validate_and_normalize_phone(phone_str):
+    """
+    Telefon numarasını temizler, normalize eder (05XXXXXXXXX) ve geçerliliğini doğrular.
+    """
+    cleaned = re.sub(r'\D', '', phone_str or '')
+    if cleaned.startswith('90') and len(cleaned) == 12:
+        cleaned = '0' + cleaned[2:]
+    elif len(cleaned) == 10 and cleaned.startswith('5'):
+        cleaned = '0' + cleaned
+
+    if len(cleaned) != 11 or not cleaned.startswith('05'):
+        raise serializers.ValidationError("Geçerli bir telefon numarası giriniz (Örn: 05XXXXXXXXX, 11 haneli olmalıdır).")
+    return cleaned
+
+
 
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
@@ -38,9 +57,10 @@ class ClientRegisterSerializer(serializers.Serializer):
         return value
 
     def validate_phone(self, value):
-        if ClientProfile.objects.filter(phone=value).exists():
+        normalized = validate_and_normalize_phone(value)
+        if ClientProfile.objects.filter(phone=normalized).exists():
             raise serializers.ValidationError("Bu telefon numarası ile kayıtlı bir hesap zaten var.")
-        return value
+        return normalized
 
     def create(self, validated_data):
         email = validated_data['email'].lower()
@@ -78,9 +98,11 @@ class ManualClientCreateSerializer(serializers.Serializer):
         return value
 
     def validate_phone(self, value):
-        if ClientProfile.objects.filter(phone=value).exists():
+        normalized = validate_and_normalize_phone(value)
+        if ClientProfile.objects.filter(phone=normalized).exists():
             raise serializers.ValidationError("Bu telefon numarası zaten kullanımda.")
-        return value
+        return normalized
+
 
     def create(self, validated_data):
         email = validated_data['email'].lower()
@@ -168,9 +190,12 @@ class SendVerificationCodeSerializer(serializers.Serializer):
         if purpose == 'CHANGE_PHONE':
             if not new_value:
                 raise serializers.ValidationError({"new_value": "Yeni telefon numarası zorunludur."})
-            if ClientProfile.objects.filter(phone=new_value).exists():
+            normalized = validate_and_normalize_phone(new_value)
+            if ClientProfile.objects.filter(phone=normalized).exists():
                 raise serializers.ValidationError({"new_value": "Bu telefon numarası başka bir danışan tarafından kullanılıyor."})
+            attrs['new_value'] = normalized
         elif purpose == 'CHANGE_EMAIL':
+
             if not new_value:
                 raise serializers.ValidationError({"new_value": "Yeni e-posta adresi zorunludur."})
             if User.objects.filter(email__iexact=new_value).exists():
@@ -193,4 +218,25 @@ class VerifyAndUpdateProfileSerializer(serializers.Serializer):
             if not attrs.get('new_value'):
                 raise serializers.ValidationError({"new_value": "Yeni değer zorunludur."})
         return attrs
+
+
+class SiteContentSerializer(serializers.ModelSerializer):
+    """ Hakkımda ve İletişim sayfaları içerik serializer'ı """
+    class Meta:
+        model = SiteContent
+        fields = [
+            'id',
+            'full_name',
+            'title',
+            'profile_image',
+            'about_text',
+            'contact_email',
+            'contact_phone',
+            'address',
+            'instagram_url',
+            'linkedin_url',
+            'updated_at',
+        ]
+        read_only_fields = ['id', 'updated_at']
+
 

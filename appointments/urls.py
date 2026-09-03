@@ -18,8 +18,10 @@ from .views import (
     PublicAvailableSlotsView,
     ClientProfileDetailView,
     ClientSendVerificationCodeView,
-    ClientVerifyAndUpdateProfileView
+    ClientVerifyAndUpdateProfileView,
+    SiteContentView
 )
+
 
 admin.site.site_title = "Randevu Yönetim Paneli"
 admin.site.site_header = "Aypsikoloji Yönetim Paneli"
@@ -57,6 +59,10 @@ urlpatterns = [
 
     # Kamuya Açık / Geriye Dönük Uyumluluk
     path('public/available-slots/', PublicAvailableSlotsView.as_view(), name='public-available-slots'),
+
+    # Sayfa İçerikleri (Hakkımda & İletişim)
+    path('site-content/', SiteContentView.as_view(), name='site-content'),
 ]
+
 
 

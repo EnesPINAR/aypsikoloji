@@ -12,12 +12,13 @@ class Command(BaseCommand):
             username='psikolog',
             defaults={
                 'email': 'psikolog@aypsikoloji.com',
-                'first_name': 'Ayşe',
-                'last_name': 'Yılmaz',
+                'first_name': 'Aybike Yaren',
+                'last_name': 'Topcuoğlu',
                 'is_staff': True,
                 'is_superuser': True,
             }
         )
+
         if created:
             psych_user.set_password('psikolog123')
             psych_user.save()

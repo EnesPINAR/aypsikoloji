@@ -270,22 +270,28 @@ export function AuthPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="reg_phone">Telefon Numarası</Label>
+                    <div className="flex items-center justify-between">
+                      <Label htmlFor="reg_phone">Telefon Numarası</Label>
+                      <span className="text-[11px] text-muted-foreground font-mono">{registerData.phone.length}/11</span>
+                    </div>
                     <div className="relative">
                       <Phone className="absolute left-3 top-2.5 text-muted-foreground size-4" />
                       <Input
                         id="reg_phone"
                         type="tel"
+                        maxLength={11}
                         placeholder="05XXXXXXXXX"
                         className="pl-9"
                         required
                         value={registerData.phone}
-                        onChange={(e) =>
-                          setRegisterData({ ...registerData, phone: e.target.value })
-                        }
+                        onChange={(e) => {
+                          const onlyNums = e.target.value.replace(/\D/g, "").slice(0, 11);
+                          setRegisterData({ ...registerData, phone: onlyNums });
+                        }}
                       />
                     </div>
                   </div>
+
 
                   <div className="space-y-2">
                     <Label htmlFor="reg_password">Şifre Belirleyin</Label>

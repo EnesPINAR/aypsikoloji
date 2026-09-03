@@ -292,4 +292,14 @@
   color: #ffffff !important;
 }
 
+/* Yatay menülerde pürüzsüz kaydırma ve kaydırma çubuğunu gizleme */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+
 

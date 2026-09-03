@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { HeartPulse, Menu, X, LogIn, LogOut, LayoutDashboard, Calendar, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ModeToggle } from "./ModeToggle";
@@ -9,6 +9,7 @@ export function Navbar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const { user, role, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const navLinks = [
     { to: "/hakkimizda", label: "Hakkımızda" },
@@ -39,7 +40,11 @@ export function Navbar() {
                   <Link
                     key={link.label}
                     to={link.to}
-                    className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                    className={`text-sm font-medium transition-colors ${
+                      location.pathname === link.to
+                        ? "text-foreground font-semibold"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
                   >
                     {link.label}
                   </Link>
@@ -48,11 +53,17 @@ export function Navbar() {
                 {role === "psychologist" && (
                   <Link
                     to="/panel/psikolog"
-                    className="text-sm font-semibold text-primary hover:underline"
+                    className={`text-sm font-medium transition-colors ${
+                      location.pathname.startsWith("/panel/psikolog")
+                        ? "text-foreground font-semibold"
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
                   >
                     Psikolog Paneli
                   </Link>
                 )}
+
+
               </nav>
             </div>
 
@@ -64,12 +75,20 @@ export function Navbar() {
                 <div className="hidden sm:flex items-center gap-2">
                   {role !== "psychologist" && (
                     <>
-                      <Button asChild size="sm">
+                      <Button
+                        asChild
+                        variant={location.pathname === "/randevu" ? "default" : "outline"}
+                        size="sm"
+                      >
                         <Link to="/randevu">
                           <Calendar size={15} /> Randevularım
                         </Link>
                       </Button>
-                      <Button asChild variant="outline" size="sm">
+                      <Button
+                        asChild
+                        variant={location.pathname === "/profil" ? "default" : "outline"}
+                        size="sm"
+                      >
                         <Link to="/profil">
                           <User size={15} /> Profilim
                         </Link>
@@ -81,6 +100,7 @@ export function Navbar() {
                   </Button>
                 </div>
               ) : (
+
 
                 <div className="hidden sm:flex items-center gap-2">
                   <Button asChild variant="ghost" size="sm">
@@ -152,29 +172,45 @@ export function Navbar() {
                   <Link
                     to="/panel/psikolog"
                     onClick={() => setIsMenuOpen(false)}
-                    className="text-base font-medium text-primary p-2 rounded-md bg-primary/10 flex items-center gap-2"
+                    className={`text-base font-medium p-2 rounded-md flex items-center gap-2 transition-colors ${
+                      location.pathname.startsWith("/panel/psikolog")
+                        ? "bg-primary text-primary-foreground font-semibold"
+                        : "text-foreground hover:bg-accent"
+                    }`}
                   >
                     <LayoutDashboard size={18} /> Psikolog Paneli
                   </Link>
                 )}
 
-                <Link
-                  to="/randevu"
-                  onClick={() => setIsMenuOpen(false)}
-                  className="text-base font-medium text-foreground p-2 rounded-md hover:bg-accent flex items-center gap-2"
-                >
-                  <Calendar size={18} /> Randevu Sistemi
-                </Link>
+
+                {role !== "psychologist" && (
+                  <Link
+                    to="/randevu"
+                    onClick={() => setIsMenuOpen(false)}
+                    className={`text-base font-medium p-2 rounded-md flex items-center gap-2 transition-colors ${
+                      location.pathname === "/randevu"
+                        ? "bg-primary text-primary-foreground font-semibold"
+                        : "text-foreground hover:bg-accent"
+                    }`}
+                  >
+                    <Calendar size={18} /> Randevu Sistemi
+                  </Link>
+                )}
 
                 {user && role !== "psychologist" && (
                   <Link
                     to="/profil"
                     onClick={() => setIsMenuOpen(false)}
-                    className="text-base font-semibold text-primary p-2 rounded-md bg-primary/10 flex items-center gap-2"
+                    className={`text-base font-medium p-2 rounded-md flex items-center gap-2 transition-colors ${
+                      location.pathname === "/profil"
+                        ? "bg-primary text-primary-foreground font-semibold"
+                        : "text-foreground hover:bg-accent"
+                    }`}
                   >
                     <User size={18} /> Profilim & Hesap Ayarları
                   </Link>
                 )}
+
               </nav>
             </div>
 
