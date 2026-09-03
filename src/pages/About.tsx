@@ -1,6 +1,44 @@
+import { useState, useEffect } from "react";
 import profilePic from "@/assets/pp.webp";
 
+interface SiteContentData {
+  full_name: string;
+  title: string;
+  profile_image: string;
+  about_text: string;
+}
+
 export function HakkimizdaPage() {
+  const [content, setContent] = useState<SiteContentData>({
+    full_name: "Aybike Yaren Topcuoğlu",
+    title: "Psikolog ve Aile Danışmanı",
+    profile_image: "",
+    about_text: "",
+  });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchContent = async () => {
+      try {
+        const res = await fetch("/api/site-content/");
+        if (res.ok) {
+          const data = await res.json();
+          setContent(data);
+        }
+      } catch (err) {
+        console.error("Hakkımda içeriği alınamadı:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchContent();
+  }, []);
+
+  const imageSrc = content.profile_image || profilePic;
+  const paragraphs = content.about_text
+    ? content.about_text.split(/\n\s*\n/).filter((p) => p.trim().length > 0)
+    : [];
+
   return (
     <main className="flex-grow container mx-auto px-4 py-8 sm:py-12">
       <div className="max-w-3xl mx-auto">
@@ -13,57 +51,40 @@ export function HakkimizdaPage() {
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-8 sm:gap-12">
-          <div className="flex-shrink-0">
+        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-8 sm:gap-12 relative">
+          <div className="flex-shrink-0 sm:sticky sm:top-24 sm:self-start transition-all">
             <img
-              src={profilePic}
-              alt="Aybike Yaren Topcuoğlu"
-              className="rounded-full w-32 h-32 sm:w-40 sm:h-40 object-cover border-4 border-muted"
+              src={imageSrc}
+              alt={content.full_name || "Psikolog"}
+              className="rounded-full w-32 h-32 sm:w-40 sm:h-40 object-cover border-4 border-muted shadow-md"
             />
           </div>
+
           <div className="text-center sm:text-left">
             <h2 className="text-2xl font-semibold text-foreground">
-              Aybike Yaren Topcuoğlu
+              {content.full_name}
             </h2>
             <p className="text-primary font-medium mt-1">
-              Psikolog ve Aile Danışmanı
+              {content.title}
             </p>
-            <p className="mt-4 text-muted-foreground leading-relaxed">
-              Hakkımda Ben Aybike Yaren Topcuoğlu, Psikolog ve Aile
-              Danışmanıyım. Lisans eğitimimi Sakarya Üniversitesi Psikoloji
-              Bölümü’nde yüksek onur derecesi ile tamamladım. Şu anda Haliç
-              Üniversitesi Tezli Psikoloji Yüksek Lisans Programı’nda uzmanlık
-              eğitimime devam etmekteyim. Akademik hayatım boyunca araştırma
-              projeleri, makale ve kitap çalışmaları içerisinde yer aldım; aynı
-              zamanda birçok eğitim ve seminer vererek mesleki deneyimimi
-              zenginleştirdim. <br /> <br />
-              Mesleki pratiğimde hem yetişkinlerle hem de çocuklarla
-              çalışıyorum. Yetişkin danışanlarla özellikle duygudurum
-              bozuklukları, kaygı (anksiyete) bozuklukları, obsesif kompulsif
-              bozukluk, öfke kontrol güçlükleri, somatik bozukluklar, yeme
-              bozuklukları üzerine yoğunlaşıyorum. Ayrıca aile ve ebeveyn
-              danışmanlığı alanında da aktif olarak çalışmaktayım. <br /> <br />
-              Terapötik yaklaşımımda tek bir yönteme bağlı kalmaktan ziyade
-              danışanın ihtiyacına göre farklı ekolleri bir araya getirmeyi
-              önemsiyorum. Dinamik ve derinlemesine bakış açısını şefkatli bir
-              şekilde harmanlarken, yapılandırılmış teknikleri de sürecin içine
-              katıyorum. Böylece hem iç dünyadaki kök nedenlere dokunabilmeyi
-              hem de gündelik yaşamda işlevselliği artırmayı hedefliyorum.{" "}
-              <br /> <br />
-              Bugüne kadar iki anaokulunda kurum psikoloğu olarak görev aldım,
-              atölye çalışmaları düzenledim ve çocuk, ergen, yetişkin
-              danışanlarla klinik deneyim kazandım. Aynı zamanda topluluk
-              çalışmalarım, deprem sonrası psikososyal destek faaliyetlerim ve
-              hastane okulu projelerim bana çok yönlü bir saha deneyimi kattı.{" "}
-              <br /> <br />
-              Mesleğe bakışımda en çok önem verdiğim şey; insanın içsel
-              yolculuğunda yanında güvenle eşlik edebilmek. Her bireyin kendi
-              hikâyesiyle değerli olduğuna inanıyor ve bu yolculukta bilimsel,
-              etik ve insancıl bir yaklaşımı rehber ediniyorum.
-            </p>
+
+            <div className="mt-6 text-muted-foreground leading-relaxed space-y-4">
+              {loading ? (
+                <p className="animate-pulse">İçerik yükleniyor...</p>
+              ) : paragraphs.length > 0 ? (
+                paragraphs.map((p, index) => (
+                  <p key={index} className="text-justify sm:text-left">
+                    {p}
+                  </p>
+                ))
+              ) : (
+                <p>Henüz biyografi bilgisi eklenmedi.</p>
+              )}
+            </div>
           </div>
         </div>
       </div>
     </main>
   );
 }
+

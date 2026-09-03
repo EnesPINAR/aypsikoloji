@@ -1,6 +1,6 @@
-@import "react-datepicker/dist/react-datepicker.css";
 @import "tailwindcss";
 @import "tw-animate-css";
+
 
 @custom-variant dark (&:is(.dark *));
 @plugin "@tailwindcss/typography";
@@ -226,3 +226,80 @@
     @apply bg-background text-foreground;
     }
 }
+
+/* Sonner Toast Kapatma Butonu & Renk İyileştirmeleri */
+[data-sonner-toaster] [data-sonner-toast] {
+  position: relative !important;
+  padding-right: 36px !important;
+}
+
+[data-sonner-toaster] [data-close-button] {
+  position: absolute !important;
+  top: 10px !important;
+  right: 10px !important;
+  left: auto !important;
+  bottom: auto !important;
+  transform: none !important;
+  background: transparent !important;
+  border: none !important;
+  color: currentColor !important;
+  opacity: 0.7 !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 20px !important;
+  height: 20px !important;
+  border-radius: 4px !important;
+  transition: opacity 0.15s ease, background-color 0.15s ease !important;
+}
+
+[data-sonner-toaster] [data-close-button]:hover {
+  opacity: 1 !important;
+  background-color: rgba(0, 0, 0, 0.1) !important;
+}
+
+.dark [data-sonner-toaster] [data-close-button]:hover {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Success Toast - Koyu Yeşil (Dark Emerald Green) */
+[data-sonner-toaster] [data-type="success"] {
+  background-color: #064e3b !important;
+  color: #f0fdf4 !important;
+  border: 1px solid #059669 !important;
+}
+
+[data-sonner-toaster] [data-type="success"] [data-icon] {
+  color: #34d399 !important;
+}
+
+[data-sonner-toaster] [data-type="success"] [data-title] {
+  color: #ffffff !important;
+  font-weight: 600 !important;
+}
+
+[data-sonner-toaster] [data-type="success"] [data-description] {
+  color: #d1fae5 !important;
+}
+
+[data-sonner-toaster] [data-type="success"] [data-close-button] {
+  color: #d1fae5 !important;
+}
+
+[data-sonner-toaster] [data-type="success"] [data-close-button]:hover {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
+}
+
+/* Yatay menülerde pürüzsüz kaydırma ve kaydırma çubuğunu gizleme */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+
+

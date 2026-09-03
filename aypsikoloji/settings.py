@@ -21,12 +21,13 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/5.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-bs*^teu2y*7=cd#z#eo=ezcirerc=dti8^@3&qao*^=9^4na^_'
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-bs*^teu2y*7=cd#z#eo=ezcirerc=dti8^@3&qao*^=9^4na^_')
+
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1', 'localhost']
+ALLOWED_HOSTS = ['127.0.0.1', 'localhost', 'testserver', '*']
 
 
 # Application definition
@@ -147,3 +148,29 @@ CSRF_TRUSTED_ORIGINS = [
     'http://127.0.0.1:8000',
     'http://localhost:8000',
 ]
+
+# Güvenli Oturum (Session) ve Çerez (Cookie) Yönetimi
+# XSS saldırılarına karşı oturum çerezi JavaScript'ten tamamen gizlenir:
+SESSION_COOKIE_HTTPONLY = True
+SESSION_COOKIE_SAMESITE = 'Lax'
+SESSION_COOKIE_AGE = 60 * 60 * 24 * 14  # 14 gün
+
+# CSRF koruması çerez ayarları
+CSRF_COOKIE_HTTPONLY = False  # React SPA'nın X-CSRFToken header'ı oluşturması için okunabilir olmalıdır
+CSRF_COOKIE_SAMESITE = 'Lax'
+
+# Canlı (HTTPS / SSL) ortamında otomatik olarak Secure (sadece HTTPS üzerinden iletim) bayrağı aktifleşir:
+if not DEBUG:
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+
+
+# E-posta (Gmail SMTP) Konfigürasyonu
+EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
+EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', 'bildirim.aypsikoloji@gmail.com')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', 'traokisavilzwjif')
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'AyPsikoloji <bildirim.aypsikoloji@gmail.com>')
+

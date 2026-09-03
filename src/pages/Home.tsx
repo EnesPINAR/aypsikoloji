@@ -1,7 +1,11 @@
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/context/AuthContext";
 
 export function HomePage() {
+  const { role } = useAuth();
+  const isPsych = role === "psychologist";
+
   return (
     <main className="flex-grow flex flex-col">
       {/* DÜZELTME: Yüksekliği `calc()` ile hesaplamak yerine `flex-grow` ile esnek bir şekilde dolduruyoruz */}
@@ -17,10 +21,13 @@ export function HomePage() {
             güçlendirin.
           </p>
           <Button asChild size="lg" className="mt-8 text-lg">
-            <Link to="/randevu">Hemen Randevu Al</Link>
+            <Link to={isPsych ? "/panel/psikolog" : "/randevu"}>
+              {isPsych ? "Psikolog Paneline Git" : "Hemen Randevu Al"}
+            </Link>
           </Button>
         </div>
       </section>
     </main>
   );
 }
+
