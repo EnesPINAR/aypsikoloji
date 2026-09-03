@@ -375,9 +375,10 @@ export function AppointmentPage() {
             <div className="space-y-10">
               {/* 1. Adım: Tarih Seçimi */}
               <section className="space-y-4">
-                <h2 className="text-xl font-bold text-foreground flex items-center gap-3">
-                  <CalendarIcon className="text-primary" size={22} /> 1. Adım: Tarih Seçin
-                </h2>
+                <div className="flex items-center gap-2.5">
+                  <CalendarIcon className="text-primary shrink-0" size={22} />
+                  <h2 className="text-lg sm:text-xl font-bold text-foreground">1. Adım: Tarih Seçin</h2>
+                </div>
                 <div className="bg-card border rounded-xl p-4 inline-block shadow-xs">
                   <Calendar
                     mode="single"
@@ -402,17 +403,20 @@ export function AppointmentPage() {
           {/* 2. Adım: Müsait Saatler */}
           {availableSlots.length > 0 && !isLoading && selectedDate && (
             <section className="space-y-4 animate-in fade-in-50">
-              <h2 className="text-xl font-bold text-foreground flex items-center gap-3">
-                <Clock className="text-primary" size={22} /> 2. Adım:{" "}
-                <span className="text-primary font-bold">
-                  {selectedDate.toLocaleDateString("tr-TR", {
-                    day: "numeric",
-                    month: "long",
-                    weekday: "long",
-                  })}
-                </span>{" "}
-                için Seans Saati Seçin
-              </h2>
+              <div className="flex items-start sm:items-center gap-2.5">
+                <Clock className="text-primary shrink-0 mt-0.5 sm:mt-0" size={22} />
+                <h2 className="text-lg sm:text-xl font-bold text-foreground leading-snug">
+                  2. Adım:{" "}
+                  <span className="text-primary font-bold">
+                    {selectedDate.toLocaleDateString("tr-TR", {
+                      day: "numeric",
+                      month: "long",
+                      weekday: "long",
+                    })}
+                  </span>{" "}
+                  için Seans Saati Seçin
+                </h2>
+              </div>
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-3">
 
                 {availableSlots.map((slot) => (
@@ -434,10 +438,12 @@ export function AppointmentPage() {
           {/* 3. Adım: Onay ve Seans Notu */}
           {selectedSlot && (
             <section className="space-y-4 animate-in fade-in-50">
-              <h2 className="text-xl font-bold text-foreground flex items-center gap-3">
-                <CheckCircle className="text-primary" size={22} /> 3. Adım: Randevuyu Onaylayın
-              </h2>
+              <div className="flex items-center gap-2.5">
+                <CheckCircle className="text-primary shrink-0" size={22} />
+                <h2 className="text-lg sm:text-xl font-bold text-foreground">3. Adım: Randevuyu Onaylayın</h2>
+              </div>
               <Card className="shadow-lg border">
+
                 <CardHeader>
                   <CardTitle>Randevu Özeti</CardTitle>
                   <CardDescription className="text-base font-medium text-foreground">
