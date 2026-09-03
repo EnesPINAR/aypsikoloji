@@ -188,3 +188,33 @@ EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', 'bildirim.aypsikoloji@gmail.
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', 'traokisavilzwjif')
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'AyPsikoloji <bildirim.aypsikoloji@gmail.com>')
 
+# Konsol Hata Loglama (DEBUG=False durumunda da hataları terminale ve journalctl'e basar)
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '[{asctime}] {levelname} {name}: {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'django.request': {
+            'handlers': ['console'],
+            'level': 'ERROR',
+            'propagate': True,
+        },
+    },
+}
+
+
