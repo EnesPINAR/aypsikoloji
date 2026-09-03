@@ -144,6 +144,5 @@ staticfiles/
 # Node
 node_modules/
 
-# Migrations #
-*/migrations/*.py
+
 
