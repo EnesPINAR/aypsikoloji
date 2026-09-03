@@ -20,13 +20,13 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate, Link } from "react-router-dom";
+import { validators } from "@/lib/validation";
 
 export function ClientProfilePage() {
   const { user, refreshUser, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
 
-
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [profileData, setProfileData] = useState<any>(null);
 
   // --- Temel Bilgiler Formu ---
@@ -64,7 +64,6 @@ export function ClientProfilePage() {
 
   const fetchProfile = async () => {
     try {
-      setLoading(true);
       const res = await fetch("/api/client/profile/", { credentials: "include" });
       if (res.ok) {
         const data = await res.json();
@@ -94,8 +93,14 @@ export function ClientProfilePage() {
   // --- 1. Temel Bilgileri Güncelle (Ad / Soyad) ---
   const handleUpdateBasicProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!firstName.trim() || !lastName.trim()) {
-      toast.error("Lütfen ad ve soyad alanlarını doldurunuz.");
+    const firstErr = validators.name(firstName, "Ad");
+    if (firstErr) {
+      toast.error(firstErr);
+      return;
+    }
+    const lastErr = validators.name(lastName, "Soyad");
+    if (lastErr) {
+      toast.error(lastErr);
       return;
     }
 
@@ -108,7 +113,7 @@ export function ClientProfilePage() {
           "X-CSRFToken": getCsrfToken(),
         },
         credentials: "include",
-        body: JSON.stringify({ first_name: firstName, last_name: lastName }),
+        body: JSON.stringify({ first_name: firstName.trim(), last_name: lastName.trim() }),
       });
 
       const data = await res.json();
@@ -117,7 +122,6 @@ export function ClientProfilePage() {
         await refreshUser();
         fetchProfile();
       } else {
-
         toast.error(data.error || "Güncelleme başarısız.");
       }
     } catch (e) {
@@ -129,8 +133,9 @@ export function ClientProfilePage() {
 
   // --- 2. Telefon Değiştirme (E-posta Onaylı) ---
   const handleSendPhoneCode = async () => {
-    if (!newPhone.trim()) {
-      toast.error("Lütfen yeni telefon numaranızı giriniz.");
+    const phoneErr = validators.phone(newPhone);
+    if (phoneErr) {
+      toast.error(phoneErr);
       return;
     }
 
@@ -145,7 +150,7 @@ export function ClientProfilePage() {
         credentials: "include",
         body: JSON.stringify({
           purpose: "CHANGE_PHONE",
-          new_value: newPhone,
+          new_value: newPhone.trim(),
         }),
       });
 
@@ -168,8 +173,9 @@ export function ClientProfilePage() {
 
   const handleVerifyPhone = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!phoneCode || phoneCode.length !== 6) {
-      toast.error("Lütfen 6 haneli doğrulama kodunu giriniz.");
+    const codeErr = validators.otpCode(phoneCode);
+    if (codeErr) {
+      toast.error(codeErr);
       return;
     }
 
@@ -209,8 +215,9 @@ export function ClientProfilePage() {
 
   // --- 3. E-posta Değiştirme (E-posta Onaylı) ---
   const handleSendEmailCode = async () => {
-    if (!newEmail.trim()) {
-      toast.error("Lütfen yeni e-posta adresinizi giriniz.");
+    const emailErr = validators.email(newEmail);
+    if (emailErr) {
+      toast.error(emailErr);
       return;
     }
 
@@ -225,7 +232,7 @@ export function ClientProfilePage() {
         credentials: "include",
         body: JSON.stringify({
           purpose: "CHANGE_EMAIL",
-          new_value: newEmail,
+          new_value: newEmail.trim().toLowerCase(),
         }),
       });
 
@@ -248,8 +255,9 @@ export function ClientProfilePage() {
 
   const handleVerifyEmail = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!emailCode || emailCode.length !== 6) {
-      toast.error("Lütfen 6 haneli doğrulama kodunu giriniz.");
+    const codeErr = validators.otpCode(emailCode);
+    if (codeErr) {
+      toast.error(codeErr);
       return;
     }
 
@@ -264,8 +272,8 @@ export function ClientProfilePage() {
         credentials: "include",
         body: JSON.stringify({
           purpose: "CHANGE_EMAIL",
-          code: emailCode,
-          new_value: newEmail,
+          code: emailCode.trim(),
+          new_value: newEmail.trim().toLowerCase(),
         }),
       });
 
@@ -278,7 +286,6 @@ export function ClientProfilePage() {
         await refreshUser();
         fetchProfile();
       } else {
-
         toast.error(data.error || "Doğrulama başarısız.");
       }
     } catch (e) {
@@ -322,18 +329,21 @@ export function ClientProfilePage() {
 
   const handleVerifyPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (newPassword.length < 6) {
-      toast.error("Yeni şifreniz en az 6 karakter olmalıdır.");
+    const passErr = validators.password(newPassword, 6);
+    if (passErr) {
+      toast.error(passErr);
       return;
     }
     if (newPassword !== confirmPassword) {
       toast.error("Yeni şifreler birbiriyle eşleşmiyor.");
       return;
     }
-    if (!passwordCode || passwordCode.length !== 6) {
-      toast.error("Lütfen e-postanıza gönderilen 6 haneli doğrulama kodunu giriniz.");
+    const codeErr = validators.otpCode(passwordCode);
+    if (codeErr) {
+      toast.error(codeErr);
       return;
     }
+
 
     setPasswordVerifying(true);
     try {

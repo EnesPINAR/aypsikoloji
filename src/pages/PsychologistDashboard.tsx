@@ -34,6 +34,9 @@ import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import { formatDateToYMD, parseYMDToDate } from "@/lib/utils";
+import { validators, formatApiErrorMessage } from "@/lib/validation";
+
+
 
 const DAYS_OF_WEEK = [
   { id: 0, label: "Pazartesi" },
@@ -357,6 +360,44 @@ export function PsychologistDashboard() {
 
   const handleCreateManualClient = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Biçimsel girdi doğrulaması (Client-side validation)
+    const firstNameErr = validators.name(newClientData.first_name, "Danışan Adı");
+    if (firstNameErr) {
+      toast.error(firstNameErr);
+      return;
+    }
+    const lastNameErr = validators.name(newClientData.last_name, "Danışan Soyadı");
+    if (lastNameErr) {
+      toast.error(lastNameErr);
+      return;
+    }
+
+    const phoneErr = validators.phone(newClientData.phone);
+    if (phoneErr) {
+      toast.error(phoneErr);
+      return;
+    }
+    const emailErr = validators.email(newClientData.email);
+    if (emailErr) {
+      toast.error(emailErr);
+      return;
+    }
+    const trimmedPassword = newClientData.password.trim();
+    if (trimmedPassword && trimmedPassword.length < 6) {
+      toast.error("Şifre belirlenecekse en az 6 karakter olmalıdır.");
+      return;
+    }
+
+    const payload = {
+      first_name: newClientData.first_name.trim(),
+      last_name: newClientData.last_name.trim(),
+      phone: newClientData.phone.trim(),
+      email: newClientData.email.trim().toLowerCase(),
+      notes: newClientData.notes.trim(),
+      ...(trimmedPassword ? { password: trimmedPassword } : {}),
+    };
+
     try {
       const res = await fetch("/api/psychologist/clients/", {
         method: "POST",
@@ -365,13 +406,13 @@ export function PsychologistDashboard() {
           "X-CSRFToken": getCsrfToken(),
         },
         credentials: "include",
-        body: JSON.stringify(newClientData),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
       if (res.ok) {
         toast.success("Yeni danışan başarıyla oluşturuldu ve onaylandı!", {
-          description: `Giriş E-postası: ${newClientData.email} | Şifre: ${newClientData.password || newClientData.phone}`,
+          description: `Giriş E-postası: ${payload.email} | Şifre: ${trimmedPassword || payload.phone}`,
           duration: 6000,
         });
         setShowAddClientModal(false);
@@ -385,9 +426,11 @@ export function PsychologistDashboard() {
         });
         fetchClients();
       } else {
-        const errorMsg = Object.values(data).flat().join(" ") || "Danışan eklenemedi.";
+
+        const errorMsg = formatApiErrorMessage(data, "Danışan eklenemedi.");
         toast.error(errorMsg);
       }
+
     } catch (e) {
       toast.error("Bağlantı hatası.");
 

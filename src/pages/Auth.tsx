@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useAuth } from "@/context/AuthContext";
+import { validators } from "@/lib/validation";
 
 export function AuthPage() {
   const [tab, setTab] = useState<"login" | "register">("login");
@@ -42,13 +43,18 @@ export function AuthPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!loginIdentifier || !loginPassword) {
-      toast.error("Lütfen tüm alanları doldurunuz.");
+    const identifierTrimmed = loginIdentifier.trim();
+    if (!identifierTrimmed) {
+      toast.error("Lütfen e-posta, telefon veya kullanıcı adınızı giriniz.");
+      return;
+    }
+    if (!loginPassword) {
+      toast.error("Lütfen şifrenizi giriniz.");
       return;
     }
 
     setLoading(true);
-    const res = await login(loginIdentifier, loginPassword);
+    const res = await login(identifierTrimmed, loginPassword);
     setLoading(false);
 
     if (res.success) {
@@ -65,6 +71,37 @@ export function AuthPage() {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // Biçimsel girdi doğrulamaları (Client-side validation)
+    const firstNameErr = validators.name(registerData.first_name, "Ad");
+    if (firstNameErr) {
+      toast.error(firstNameErr);
+      return;
+    }
+
+    const lastNameErr = validators.name(registerData.last_name, "Soyad");
+    if (lastNameErr) {
+      toast.error(lastNameErr);
+      return;
+    }
+
+    const emailErr = validators.email(registerData.email);
+    if (emailErr) {
+      toast.error(emailErr);
+      return;
+    }
+
+    const phoneErr = validators.phone(registerData.phone);
+    if (phoneErr) {
+      toast.error(phoneErr);
+      return;
+    }
+
+    const passwordErr = validators.password(registerData.password, 6);
+    if (passwordErr) {
+      toast.error(passwordErr);
+      return;
+    }
+
     if (registerData.password !== registerData.password_confirm) {
       toast.error("Şifreler uyuşmuyor!", {
         description: "Lütfen iki alanda da aynı şifreyi girdiğinizden emin olun.",
@@ -72,12 +109,6 @@ export function AuthPage() {
       return;
     }
 
-    if (registerData.password.length < 6) {
-      toast.error("Şifre çok kısa!", {
-        description: "Şifreniz en az 6 karakter olmalıdır.",
-      });
-      return;
-    }
 
     setLoading(true);
     const res = await register({

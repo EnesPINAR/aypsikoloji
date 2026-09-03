@@ -149,11 +149,15 @@ export function Navbar() {
                   <X />
                 </Button>
               </div>
-              <nav className="flex flex-col gap-3 mt-4">
+              <nav className="flex flex-col gap-2 mt-4">
                 <Link
                   to="/"
                   onClick={() => setIsMenuOpen(false)}
-                  className="text-base font-medium text-foreground p-2 rounded-md hover:bg-accent"
+                  className={`text-base font-medium p-2 rounded-md transition-colors ${
+                    location.pathname === "/"
+                      ? "bg-primary text-primary-foreground font-semibold"
+                      : "text-foreground hover:bg-accent"
+                  }`}
                 >
                   Ana Sayfa
                 </Link>
@@ -162,11 +166,16 @@ export function Navbar() {
                     key={link.label}
                     to={link.to}
                     onClick={() => setIsMenuOpen(false)}
-                    className="text-base font-medium text-foreground p-2 rounded-md hover:bg-accent"
+                    className={`text-base font-medium p-2 rounded-md transition-colors ${
+                      location.pathname === link.to
+                        ? "bg-primary text-primary-foreground font-semibold"
+                        : "text-foreground hover:bg-accent"
+                    }`}
                   >
                     {link.label}
                   </Link>
                 ))}
+
 
                 {role === "psychologist" && (
                   <Link

@@ -42,14 +42,61 @@ class ClientProfileSerializer(serializers.ModelSerializer):
         model = ClientProfile
         fields = ['id', 'user', 'phone', 'status', 'status_display', 'created_by_psychologist', 'notes', 'created_at', 'approved_at']
 
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        request = self.context.get('request')
+        user = getattr(request, 'user', None) if request else None
+        # Psikolog veya yetkili admin haricindeki kullanıcılara gizli klinik notları gösterme
+        if not user or not (hasattr(user, 'psychologist_profile') or user.is_staff or user.is_superuser):
+            ret.pop('notes', None)
+        return ret
+
+
 
 class ClientRegisterSerializer(serializers.Serializer):
     username = serializers.CharField(max_length=150, required=False)
-    email = serializers.EmailField(required=True)
-    phone = serializers.CharField(max_length=20, required=True)
-    first_name = serializers.CharField(max_length=100, required=True)
-    last_name = serializers.CharField(max_length=100, required=True)
-    password = serializers.CharField(write_only=True, min_length=6, required=True)
+    email = serializers.EmailField(
+        required=True,
+        error_messages={
+            'blank': 'E-posta adresi boş bırakılamaz.',
+            'required': 'E-posta adresi zorunludur.',
+            'invalid': 'Lütfen geçerli bir e-posta adresi giriniz.'
+        }
+    )
+    phone = serializers.CharField(
+        max_length=20,
+        required=True,
+        error_messages={
+            'blank': 'Telefon numarası boş bırakılamaz.',
+            'required': 'Telefon numarası zorunludur.'
+        }
+    )
+    first_name = serializers.CharField(
+        max_length=100,
+        required=True,
+        error_messages={
+            'blank': 'Ad alanı boş bırakılamaz.',
+            'required': 'Ad alanı zorunludur.'
+        }
+    )
+    last_name = serializers.CharField(
+        max_length=100,
+        required=True,
+        error_messages={
+            'blank': 'Soyad alanı boş bırakılamaz.',
+            'required': 'Soyad alanı zorunludur.'
+        }
+    )
+    password = serializers.CharField(
+        write_only=True,
+        min_length=6,
+        required=True,
+        error_messages={
+            'blank': 'Şifre boş bırakılamaz.',
+            'required': 'Şifre zorunludur.',
+            'min_length': 'Şifre en az 6 karakter olmalıdır.'
+        }
+    )
 
     def validate_email(self, value):
         if User.objects.filter(email__iexact=value).exists():
@@ -85,12 +132,56 @@ class ClientRegisterSerializer(serializers.Serializer):
 
 
 class ManualClientCreateSerializer(serializers.Serializer):
-    first_name = serializers.CharField(max_length=100, required=True)
-    last_name = serializers.CharField(max_length=100, required=True)
-    phone = serializers.CharField(max_length=20, required=True)
-    email = serializers.EmailField(required=True)
+    first_name = serializers.CharField(
+        max_length=100,
+        required=True,
+        error_messages={
+            'blank': 'Danışan adı boş bırakılamaz.',
+            'required': 'Danışan adı zorunludur.'
+        }
+    )
+    last_name = serializers.CharField(
+        max_length=100,
+        required=True,
+        error_messages={
+            'blank': 'Danışan soyadı boş bırakılamaz.',
+            'required': 'Danışan soyadı zorunludur.'
+        }
+    )
+    phone = serializers.CharField(
+        max_length=20,
+        required=True,
+        error_messages={
+            'blank': 'Telefon numarası boş bırakılamaz.',
+            'required': 'Telefon numarası zorunludur.'
+        }
+    )
+    email = serializers.EmailField(
+        required=True,
+        error_messages={
+            'blank': 'E-posta adresi boş bırakılamaz.',
+            'required': 'E-posta adresi zorunludur.',
+            'invalid': 'Lütfen geçerli bir e-posta adresi giriniz.'
+        }
+    )
     notes = serializers.CharField(allow_blank=True, required=False, default="")
-    password = serializers.CharField(write_only=True, min_length=6, required=False)
+    password = serializers.CharField(
+        write_only=True,
+        required=False,
+        allow_blank=True,
+        allow_null=True,
+        default="",
+        error_messages={
+            'min_length': 'Şifre en az 6 karakter olmalıdır.'
+        }
+    )
+
+    def validate_password(self, value):
+        if value and len(value) < 6:
+            raise serializers.ValidationError("Şifre en az 6 karakter olmalıdır.")
+        return value
+
+
 
     def validate_email(self, value):
         if User.objects.filter(email__iexact=value).exists():
@@ -166,6 +257,16 @@ class AppointmentSerializer(serializers.ModelSerializer):
             'created_at'
         ]
         read_only_fields = ['id', 'psychologist', 'client', 'created_at']
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        request = self.context.get('request')
+        user = getattr(request, 'user', None) if request else None
+        # Psikoloğun özel seans notları danışanlara gösterilmez
+        if not user or not (hasattr(user, 'psychologist_profile') or user.is_staff or user.is_superuser):
+            ret.pop('psychologist_notes', None)
+        return ret
+
 
 
 class ClientCreateAppointmentSerializer(serializers.Serializer):
